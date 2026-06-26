@@ -4,7 +4,7 @@
    derived from it, so a new VERSION makes this service worker reinstall and
    re-precache the updated files. Without a bump, returning users (and the
    Capacitor WebView after a Play Store update) keep serving the old cached app. */
-const VERSION = "5";
+const VERSION = "8";
 const CACHE = "wallet-v" + VERSION;
 const ASSETS = [
   "./",
@@ -12,6 +12,7 @@ const ASSETS = [
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
+  "./lib/fonts/bricolage-grotesque.woff2",
   "./lib/jsbarcode.min.js",
   "./lib/qrcode.min.js",
   "./lib/zxing.min.js",

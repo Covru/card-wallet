@@ -21,8 +21,8 @@ grain), a champagne-gold accent, and two layouts you can switch between:
 - **Persistent storage** is requested so the browser won't evict your cards, plus a periodic **backup reminder**
 - **Backup / restore** to a single JSON file you control (your only safety net — local-only means no cloud)
 
-The app ships with a few sample cards so it isn't empty on first run; delete them
-and add your own.
+Your wallet starts empty on first launch — tap **Add card** to create your first
+one (by scanning, photo, or typing the number).
 
 ## Run it
 The app needs to be served over **https or localhost** for camera scanning,

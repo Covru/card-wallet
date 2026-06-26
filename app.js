@@ -1,14 +1,14 @@
 (() => {
   "use strict";
   const CATEGORIES = {
-    gym:     { label:"Gym & Fitness", hue:"#8a5a2b" },
-    grocery: { label:"Grocery",       hue:"#2e5e4e" },
-    transit: { label:"Transit",       hue:"#2b3a63" },
-    library: { label:"Library",       hue:"#4a3357" },
-    cafe:    { label:"Cafe & Food",   hue:"#4a3329" },
-    events:  { label:"Events",        hue:"#5e2b3a" },
-    loyalty: { label:"Loyalty",       hue:"#5a4a2a" },
-    other:   { label:"Other",         hue:"#2a2c30" },
+    gym:     { label:"Gym & Fitness", hue:"#E0512A" },
+    grocery: { label:"Grocery",       hue:"#1E8E5A" },
+    transit: { label:"Transit",       hue:"#2C5BD8" },
+    library: { label:"Library",       hue:"#7B3FB0" },
+    cafe:    { label:"Cafe & Food",   hue:"#B0532A" },
+    events:  { label:"Events",        hue:"#D23B6E" },
+    loyalty: { label:"Loyalty",       hue:"#9C6712" },
+    other:   { label:"Other",         hue:"#4A4F57" },
   };
   const CAT_KEYS = Object.keys(CATEGORIES);
   const FORMATS = [
@@ -117,8 +117,16 @@
   }
   function sortNow(){ sortCards(cards); }
   function visible(){
+    const q=query.toLowerCase().trim();
     return cards.filter(c=>activeCat==="all"||c.category===activeCat)
-      .filter(c=>c.name.toLowerCase().includes(query.toLowerCase().trim()));
+      .filter(c=>{
+        if(!q)return true;
+        const cat=(CATEGORIES[c.category]||CATEGORIES.other).label.toLowerCase();
+        return c.name.toLowerCase().includes(q)
+          || (c.number||"").toLowerCase().includes(q)
+          || cat.includes(q)
+          || (c.notes||"").toLowerCase().includes(q);
+      });
   }
 
   // ---------- card faces ----------
@@ -193,7 +201,9 @@
       content.appendChild(h("div",{class:"empty"},
         h("div",{class:"box",html:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'}),
         h("p",{style:"margin-top:14px"}, cards.length?"No cards match.":"Your wallet is empty."),
-        h("button",{onClick:()=>openAdd()}, cards.length?"Add another card":"Add your first card")));
+        cards.length
+          ? h("button",{onClick:()=>{query="";activeCat="all";const _sb=$("#searchInput");if(_sb)_sb.value="";render();}},"Clear search")
+          : h("button",{onClick:()=>openAdd()},"Add your first card")));
       return;
     }
     maybeBackupBanner(content);
@@ -277,7 +287,7 @@
     if(!modalReturnFocus)modalReturnFocus=document.activeElement;
     requestAnimationFrame(()=>{const el=overlay.querySelector(SEL);if(el)try{el.focus();}catch(_){}});
   }
-  function closeModal(){$("#modalRoot").innerHTML="";const r=modalReturnFocus;modalReturnFocus=null;if(r)try{r.focus();}catch(_){}}
+  function closeModal(){releaseWake();$("#modalRoot").innerHTML="";const r=modalReturnFocus;modalReturnFocus=null;if(r)try{r.focus();}catch(_){}}
   function sheet(...children){
     const root=$("#modalRoot");
     const overlay=h("div",{class:"overlay",onClick:e=>{if(e.target===overlay)closeModal();}});
@@ -300,7 +310,7 @@
     const codeCard=h("div",{class:"code-card"},holder,h("p",{class:"digits"},card.number||"—"));
     setTimeout(()=>renderCode(holder,card,70),0);
     const star=card.favorite
-      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="#cdb07e" stroke="#cdb07e" stroke-width="1.4"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>'
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="#C9971E" stroke="#C9971E" stroke-width="1.4"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>'
       : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>';
     sheet(
       h("div",{class:"sheet-bar"},
@@ -313,8 +323,9 @@
             onClick:async()=>{if(confirm("Delete “"+card.name+"”?")){try{await dbDelete(card.id);}catch(err){toast("Couldn't delete — storage error");return;}dropURL(card.id);cards=cards.filter(c=>c.id!==card.id);closeModal();render();toast("Card deleted");}}}))),
       face, codeCard,
       card.notes?h("p",{class:"notes"},card.notes):null,
-      h("button",{class:"primary",onClick:()=>openCard(card)},h("span",{html:SHOW_IC}),"Show barcode")
+      h("button",{class:"primary",onClick:()=>openCard(card)},h("span",{html:SHOW_IC}),"Show full screen")
     );
+    acquireWake(); // a scannable barcode is visible here too — keep the screen lit
   }
 
   let wakeLock=null;
@@ -330,19 +341,20 @@
       h("div",{style:"display:flex;align-items:flex-start;justify-content:space-between"},h("div",{class:"chipic"}),h("span",{style:"color:#fff",html:WAVE})),
       h("div",{},h("p",{class:"clabel"},cat.label),h("p",{class:"cname",style:"font-size:18px"},card.name))));
     const holder=h("div",{class:"flip-holder"});
-    const back=h("div",{class:"flip-back"},h("p",{class:"flip-name"},card.name),holder,h("p",{class:"flip-digits"},card.number||"—"));
-    const inner=h("div",{class:"flip-inner"},front,back);
+    const back=h("div",{class:"flip-back"},h("div",{class:"punch",style:`background:${shade(cat.hue,-18)}`}),h("p",{class:"flip-name"},card.name),holder,h("p",{class:"flip-digits"},card.number||"—"));
+    // Open already showing the barcode (the reason you tapped the card); "Flip" reveals the face.
+    const inner=h("div",{class:"flip-inner flipped"},front,back);
     const stage=h("div",{class:"flip-stage"},inner);
     const tools=h("div",{class:"flip-tools"},
       h("button",{class:"flip-tool",onClick:()=>inner.classList.toggle("flipped")},h("span",{html:FLIP_IC}),"Flip"),
       h("button",{class:"flip-tool",onClick:()=>{closeCard();openShow(card);}},h("span",{html:SHOW_IC}),"Enlarge"),
       h("button",{class:"flip-tool",onClick:()=>{closeCard();openDetail(card);}},h("span",{html:INFO_IC}),"Details"));
-    const overlay=h("div",{class:"flip-overlay",onClick:e=>{if(e.target===overlay)closeCard();}},
+    const overlay=h("div",{class:"flip-overlay",style:`background:radial-gradient(88% 56% at 50% 34%, ${shade(cat.hue,30)}, ${shade(cat.hue,-36)})`,onClick:e=>{if(e.target===overlay)closeCard();}},
+      h("div",{class:"spill"}),
       h("button",{class:"flip-close","aria-label":"Close",html:closeIcon,onClick:()=>closeCard()}),
       stage, tools, h("p",{class:"flip-hint"},"Won’t scan? Tap Enlarge for a bigger code."));
     $("#modalRoot").innerHTML="";$("#modalRoot").appendChild(overlay);trapModal(overlay,card.name||"Card");
     setTimeout(()=>renderCode(holder,card,100),0);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>inner.classList.add("flipped")));
     acquireWake();
     function closeCard(){releaseWake();closeModal();}
   }
@@ -408,9 +420,17 @@
       h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];if(f){pending=f;$("#ptext").textContent="Photo added — tap to replace";}}}));
     let autoFmt = !(existing && existing.format);
     const prev=h("div",{class:"code-preview",style:"display:none"});
+    // The exact symbology (Code 128, EAN-13, …) is detected automatically and hidden behind
+    // a "Change" link, so a normal user only ever sees "Barcode" or "QR code".
+    const typeName=(v)=> v==="QR" ? "QR code" : "Barcode";
+    const typeLabel=h("span",{class:"type-name"},typeName(fmtS.value));
+    const typeWrap=h("div",{class:"field",style:"display:none;margin-top:10px"},h("label",{for:"f-type"},"Barcode type (advanced)"),fmtS);
+    const typeRow=h("div",{class:"type-row"},h("span",{},"Code type:"),typeLabel,
+      h("button",{class:"type-change",type:"button",onClick:()=>{typeWrap.style.display=(typeWrap.style.display==="none"?"block":"none");}},"Change"));
+    function syncTypeName(){typeLabel.textContent=typeName(fmtS.value);}
     function updatePreview(){const v=numI.value.trim();if(!v){prev.style.display="none";return;}prev.style.display="flex";renderCode(prev,{number:v,format:fmtS.value},56);}
-    numI.addEventListener("input",()=>{if(autoFmt){const d=detectFormat(numI.value);if(d)fmtS.value=d;}updatePreview();});
-    fmtS.addEventListener("change",()=>{autoFmt=false;updatePreview();});
+    numI.addEventListener("input",()=>{if(autoFmt){const d=detectFormat(numI.value);if(d)fmtS.value=d;}syncTypeName();updatePreview();});
+    fmtS.addEventListener("change",()=>{autoFmt=false;syncTypeName();updatePreview();});
     let saving=false;
     const save=async()=>{
       if(saving)return;
@@ -426,7 +446,9 @@
       try{
         await dbPut(rec);dropURL(rec.id);
         const i=cards.findIndex(c=>c.id===rec.id);if(i>=0)cards[i]=rec;else cards.push(rec);
-        closeModal();sortNow();render();toast(card.id?"Card updated":"Card added");
+        // Clear any active search/filter so the saved card is always visible afterward.
+        closeModal();query="";activeCat="all";const _sb=$("#searchInput");if(_sb)_sb.value="";
+        sortNow();render();toast(card.id?"Card updated":"Card added");
       }catch(e){saving=false;toast("Couldn't save the card");}
     };
     sheet(
@@ -437,9 +459,8 @@
         h("span",{html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>'}),"Scan barcode"),
       h("div",{class:"field"},h("label",{for:"f-name"},"Name"),nameI),
       h("div",{class:"field"},h("label",{},"Category"),cats),
-      h("div",{class:"frow"},
-        h("div",{class:"field",style:"margin-top:13px;flex:1"},h("label",{for:"f-number"},"Card number"),numI),
-        h("div",{class:"field",style:"margin-top:13px;flex:0 0 42%"},h("label",{for:"f-type"},"Type"),fmtS)),
+      h("div",{class:"field"},h("label",{for:"f-number"},"Card number"),numI),
+      typeRow, typeWrap,
       h("div",{class:"field"},h("label",{},"Preview"),prev),
       h("div",{class:"field"},h("label",{for:"f-notes"},"Notes"),notesI),
       h("div",{class:"field"},h("label",{},"Photo (optional)"),photo),
@@ -488,6 +509,7 @@
     let list;
     try{const data=JSON.parse(await file.text());list=Array.isArray(data)?data:data.cards;if(!Array.isArray(list))throw 0;}
     catch(e){toast("Couldn't read that backup file");return;}
+    if(!list.length){toast("That backup has no cards in it");return;}
     if(!confirm("Import "+list.length+" cards? This replaces what's here now."))return;
     // Rebuild every record in memory FIRST, so a malformed file can't wipe the existing wallet.
     const recs=[];const seenIds=new Set();
@@ -505,13 +527,6 @@
     }catch(e){cards=await dbGetAll();sortNow();render();toast("Import failed — nothing changed");}
   }
 
-  const SEED=[
-    {id:1,name:"Equinox",category:"gym",format:"CODE128",number:"884512306",notes:"Member since 2023 · all-club access",image:null,favorite:true,uses:0,order:0},
-    {id:2,name:"Whole Foods Market",category:"grocery",format:"CODE128",number:"6011004512",notes:"Prime member · 2× rewards",image:null,favorite:true,uses:0,order:1},
-    {id:3,name:"Metro GO Pass",category:"transit",format:"CODE128",number:"0042118890",notes:"Auto top-up at $5",image:null,favorite:false,uses:0,order:2},
-    {id:4,name:"Blue Bottle Coffee",category:"cafe",format:"QR",number:"BBC-7741-XYZ",notes:"Free drink every 10 visits",image:null,favorite:false,uses:0,order:3},
-  ];
-
   function hideSplash(){const s=$("#splash");if(s){s.classList.add("hide");setTimeout(()=>{s&&s.remove();},500);}}
   async function init(){
     setTimeout(hideSplash,4000);
@@ -519,11 +534,6 @@
     catch(e){$("#content").innerHTML="";$("#content").appendChild(h("p",{style:"color:var(--muted);margin-top:30px;line-height:1.5"},"Storage isn't available in this context. Open the app from a hosted page (https or localhost) so it can save your cards on this device."));["#addBtn","#exportBtn","#importBtn","#searchInput","#seg","#chips"].forEach(s=>{const el=$(s);if(el){el.setAttribute("aria-disabled","true");el.style.opacity=".4";el.style.pointerEvents="none";}});const _sb=$("#searchInput");if(_sb)_sb.disabled=true;hideSplash();return;}
     cards=await dbGetAll();
     const saved=await metaGet("settings");
-    const seeded=await metaGet("seeded");
-    // Seed demo cards only on a genuinely first run. Gate on the settings record too, so a
-    // failed "seeded" write can't silently re-create demo cards after the user clears their
-    // wallet (the settings record is written on first run and thereafter persists).
-    if(cards.length===0 && !seeded && !saved){for(const s of SEED){await dbPut(s);}cards=await dbGetAll();try{await metaPut("seeded",true);}catch(e){}}
     if(saved)settings=Object.assign(settings,saved);else{settings.lastBackup=Date.now();await saveSettings();}
     try{if(navigator.storage&&navigator.storage.persist){await navigator.storage.persist();}}catch(e){}
     sortNow();render();

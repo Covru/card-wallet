@@ -1,7 +1,7 @@
 {
   "id": "./",
   "name": "Wallet — Local Cards",
-  "short_name": "Wallet",
+  "short_name": "Card Wallet",
   "description": "A private, offline wallet for your membership and loyalty cards. Generate scannable barcodes, scan to add, and keep everything stored only on your device.",
   "lang": "en",
   "dir": "ltr",
@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],
   "orientation": "portrait",
-  "background_color": "#0c0b0a",
-  "theme_color": "#0c0b0a",
+  "background_color": "#E9E3D5",
+  "theme_color": "#E9E3D5",
   "categories": ["productivity", "utilities", "lifestyle"],
   "prefer_related_applications": false,
   "icons": [

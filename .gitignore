@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# generated native project + web copy (reproducible via `npm run assets` + `npm run sync`)
+android/
+www/
+
+# scratch
+design-preview.html
+
+# os / editor
+.DS_Store
+Thumbs.db
+*.log
