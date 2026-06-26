@@ -1,0 +1,547 @@
+(() => {
+  "use strict";
+  const CATEGORIES = {
+    gym:     { label:"Gym & Fitness", hue:"#8a5a2b" },
+    grocery: { label:"Grocery",       hue:"#2e5e4e" },
+    transit: { label:"Transit",       hue:"#2b3a63" },
+    library: { label:"Library",       hue:"#4a3357" },
+    cafe:    { label:"Cafe & Food",   hue:"#4a3329" },
+    events:  { label:"Events",        hue:"#5e2b3a" },
+    loyalty: { label:"Loyalty",       hue:"#5a4a2a" },
+    other:   { label:"Other",         hue:"#2a2c30" },
+  };
+  const CAT_KEYS = Object.keys(CATEGORIES);
+  const FORMATS = [
+    { v:"CODE128", label:"Code 128" },{ v:"EAN13", label:"EAN-13" },{ v:"EAN8", label:"EAN-8" },
+    { v:"UPC", label:"UPC-A" },{ v:"CODE39", label:"Code 39" },{ v:"QR", label:"QR code" },
+  ];
+  const fmtLabel=v=>(FORMATS.find(f=>f.v===v)||{label:v}).label;
+  function checkDigitOK(s){
+    let sum=0;
+    for(let i=s.length-2;i>=0;i--){ sum += (+s[i]) * (((s.length-2-i)%2===0)?3:1); }
+    return ((10-(sum%10))%10)===(+s[s.length-1]);
+  }
+  function detectFormat(num){
+    const s=(num||"").replace(/\s+/g,"");
+    if(!s) return null;
+    if(/^\d+$/.test(s)){
+      if(s.length===13 && checkDigitOK(s)) return "EAN13";
+      if(s.length===12 && checkDigitOK(s)) return "UPC";
+      if(s.length===8 && checkDigitOK(s)) return "EAN8";
+      return "CODE128";
+    }
+    return "CODE128";
+  }
+  function validFor(value,fmt){
+    if(!value) return true; if(fmt==="QR") return true;
+    try{ const svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); JsBarcode(svg,value,{format:fmt,displayValue:false,margin:0,height:30}); return true; }catch(e){ return false; }
+  }
+  const ICON = (cat) => {
+    const p={
+      gym:'<rect x="2" y="9" width="3" height="6" rx="1"/><rect x="19" y="9" width="3" height="6" rx="1"/><rect x="5" y="10.5" width="2" height="3"/><rect x="17" y="10.5" width="2" height="3"/><line x1="7" y1="12" x2="17" y2="12"/>',
+      grocery:'<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.5 12.5h11L20 7H6"/>',
+      transit:'<rect x="5" y="3" width="14" height="14" rx="3"/><line x1="5" y1="11" x2="19" y2="11"/><circle cx="8.5" cy="14" r="1"/><circle cx="15.5" cy="14" r="1"/><line x1="7" y1="20" x2="5" y2="22"/><line x1="17" y1="20" x2="19" y2="22"/>',
+      library:'<path d="M12 6c-2-1.5-5-1.5-8 0v13c3-1.5 6-1.5 8 0 2-1.5 5-1.5 8 0V6c-3-1.5-6-1.5-8 0z"/><line x1="12" y1="6" x2="12" y2="19"/>',
+      cafe:'<path d="M5 8h12v5a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/><line x1="8" y1="3" x2="8" y2="5"/><line x1="12" y1="3" x2="12" y2="5"/>',
+      events:'<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><line x1="14" y1="6" x2="14" y2="16" stroke-dasharray="2 2"/>',
+      loyalty:'<path d="M12 20S4 14.5 4 9a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 5.5-8 11-8 11z"/>',
+      other:'<rect x="3" y="6" width="18" height="12" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    };
+    return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p[cat]||p.other}</svg>`;
+  };
+  const WAVE='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="opacity:.8"><path d="M8.5 8a6 6 0 0 1 0 8M12 5.5a10 10 0 0 1 0 13M5 10.5a3 3 0 0 1 0 3"/></svg>';
+  const STAR_F='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>';
+  const closeIcon='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const SHOW_IC='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  const INFO_IC='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="0.6" fill="currentColor" stroke="none"/></svg>';
+  const ARRANGE_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5v14M7 5L4 8M7 5l3 3"/><path d="M17 19V5M17 19l3-3M17 19l-3-3"/></svg>';
+  const DRAG_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="9" x2="19" y2="9"/><line x1="5" y1="15" x2="19" y2="15"/></svg>';
+  const FLIP_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 0 1 15-6.7L21 7"/><path d="M21 3v4h-4"/><path d="M21 13a9 9 0 0 1-15 6.7L3 17"/><path d="M3 21v-4h4"/></svg>';
+  const CAM_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>';
+  const IMG_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+  const TYPE_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  const CHEV_R='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=Math.max(0,Math.min(255,(n>>16)+amt));const g=Math.max(0,Math.min(255,((n>>8)&255)+amt));const b=Math.max(0,Math.min(255,(n&255)+amt));return"#"+((r<<16)|(g<<8)|b).toString(16).padStart(6,"0");}
+  const grad=(hue)=>`linear-gradient(150deg, ${shade(hue,20)}, ${shade(hue,-26)})`;
+
+  function h(tag,props={},...kids){
+    const el=document.createElement(tag);
+    for(const[k,v] of Object.entries(props||{})){
+      if(k==="class")el.className=v;else if(k==="html")el.innerHTML=v;else if(k==="style")el.setAttribute("style",v);
+      else if(k.startsWith("on"))el.addEventListener(k.slice(2).toLowerCase(),v);
+      else if(v!==false&&v!=null)el.setAttribute(k,v);
+    }
+    for(const kid of kids.flat()){if(kid==null||kid===false)continue;el.appendChild(typeof kid==="string"?document.createTextNode(kid):kid);}
+    return el;
+  }
+  const $=(s)=>document.querySelector(s);
+
+  const DB_NAME="wallet-db", STORE="cards", META="meta";
+  let _db=null, cards=[];
+  let settings={sortMode:"used",lastBackup:0,snoozeUntil:0};
+  function uid(){try{return crypto.randomUUID();}catch(e){return Date.now()+"-"+Math.floor(Math.random()*1e9);}}
+  function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,2);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:"id"});if(!db.objectStoreNames.contains(META))db.createObjectStore(META,{keyPath:"k"});};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+  function metaGet(k){return new Promise((res)=>{try{const q=_db.transaction(META,"readonly").objectStore(META).get(k);q.onsuccess=()=>res(q.result?q.result.v:null);q.onerror=()=>res(null);}catch(e){res(null);}});}
+  function metaPut(k,v){return new Promise((res,rej)=>{try{const q=_db.transaction(META,"readwrite").objectStore(META).put({k,v});q.onsuccess=()=>res();q.onerror=()=>rej(q.error);}catch(e){rej(e);}});}
+  function saveSettings(){return metaPut("settings",settings).catch(()=>{});}
+  function tx(m){return _db.transaction(STORE,m).objectStore(STORE);}
+  function dbGetAll(){return new Promise((res,rej)=>{const q=tx("readonly").getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error);});}
+  function dbPut(c){return new Promise((res,rej)=>{const q=tx("readwrite").put(c);q.onsuccess=()=>res();q.onerror=()=>rej(q.error);});}
+  function dbDelete(id){return new Promise((res,rej)=>{const q=tx("readwrite").delete(id);q.onsuccess=()=>res();q.onerror=()=>rej(q.error);});}
+  function dbClear(){return new Promise((res,rej)=>{const q=tx("readwrite").clear();q.onsuccess=()=>res();q.onerror=()=>rej(q.error);});}
+  function dbReplaceAll(recs){return new Promise((res,rej)=>{const t=_db.transaction(STORE,"readwrite");const s=t.objectStore(STORE);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);try{s.clear();for(const rec of recs)s.put(rec);}catch(e){try{t.abort();}catch(_){}rej(e);}});}
+  const urlCache=new Map();
+  function imgURL(card){if(!card.image)return null;if(urlCache.has(card.id))return urlCache.get(card.id);const u=URL.createObjectURL(card.image);urlCache.set(card.id,u);return u;}
+  function dropURL(id){if(urlCache.has(id)){URL.revokeObjectURL(urlCache.get(id));urlCache.delete(id);}}
+
+  function renderCode(holder,card,height){
+    holder.innerHTML="";const fmt=card.format||"CODE128";const value=(fmt==="QR")?(card.number||"").trim():(card.number||"").replace(/\s+/g,"");
+    if(!value){holder.appendChild(h("p",{style:"color:#999;font-size:13px"},"No number saved"));return;}
+    if(fmt==="QR"){const c=document.createElement("canvas");holder.appendChild(c);
+      QRCode.toCanvas(c,value,{margin:1,width:height?Math.min(height*1.4,230):170,color:{dark:"#16130f",light:"#fff"}},(err)=>{if(err){holder.innerHTML="";holder.appendChild(h("p",{style:"color:#c0392b;font-size:13px"},"Invalid for this format"));}});return;}
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");holder.appendChild(svg);
+    const o={format:fmt,displayValue:false,margin:0,height:height||70,width:2,lineColor:"#16130f"};
+    try{JsBarcode(svg,value,o);}catch(e){try{JsBarcode(svg,value,{...o,format:"CODE128"});}catch(e2){holder.innerHTML="";holder.appendChild(h("p",{style:"color:#c0392b;font-size:13px"},"Invalid for this format"));}}
+  }
+
+  let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.setAttribute("data-show","true");clearTimeout(toastT);toastT=setTimeout(()=>t.setAttribute("data-show","false"),2100);}
+
+  let mode="stack",query="",activeCat="all";
+
+  function sortCards(arr){
+    const fav=c=>c.favorite?0:1;
+    if(settings.sortMode==="custom")
+      return arr.sort((a,b)=>(a.order??1e9)-(b.order??1e9)||a.name.localeCompare(b.name));
+    return arr.sort((a,b)=>fav(a)-fav(b)||(b.uses||0)-(a.uses||0)||(a.order??1e9)-(b.order??1e9)||a.name.localeCompare(b.name));
+  }
+  function sortNow(){ sortCards(cards); }
+  function visible(){
+    return cards.filter(c=>activeCat==="all"||c.category===activeCat)
+      .filter(c=>c.name.toLowerCase().includes(query.toLowerCase().trim()));
+  }
+
+  // ---------- card faces ----------
+  function baseFace(card,onClick){
+    const cat=CATEGORIES[card.category]||CATEGORIES.other;
+    const f=h("div",{class:"face",role:"button",tabindex:"0",style:`background:${grad(cat.hue)}`,onClick});
+    if(card.image){f.appendChild(h("img",{class:"photo",src:imgURL(card),alt:""}));f.appendChild(h("div",{class:"photo-veil"}));f.appendChild(h("div",{class:"photo-veil-top"}));}
+    f.appendChild(h("div",{class:"grain"}));f.appendChild(h("div",{class:"sheen"}));
+    f.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onClick();}});
+    return f;
+  }
+  function faceStack(card){
+    const cat=CATEGORIES[card.category]||CATEGORIES.other;
+    const f=baseFace(card,()=>openCard(card));
+    f.appendChild(h("div",{class:"body"},
+      h("div",{class:"peek"},
+        h("div",{style:"min-width:0"},
+          h("p",{class:"clabel"},cat.label),
+          h("p",{class:"cname"},card.name)),
+        h("div",{style:"display:flex;align-items:center;gap:7px;flex:0 0 auto"},
+          card.favorite?h("span",{style:"color:var(--gold)",html:STAR_F}):null,
+          h("button",{class:"info-btn","aria-label":"Card details",onClick:e=>{e.stopPropagation();openDetail(card);},html:INFO_IC}))),
+      h("div",{style:"display:flex;align-items:flex-end;justify-content:space-between"},
+        h("div",{class:"chipic"}),
+        card.number?h("p",{class:"cnum",style:"margin:0"},"•••• "+card.number.slice(-4)):null)
+    ));
+    return f;
+  }
+  function listRow(card){
+    const cat=CATEGORIES[card.category]||CATEGORIES.other;
+    return h("div",{class:"row",role:"button",tabindex:"0",onClick:()=>openCard(card),
+        onKeydown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCard(card);}}},
+      h("div",{class:"spine",style:`background:${grad(cat.hue)}`}),
+      h("div",{class:"ricon",style:`background:${grad(cat.hue)}`,html:ICON(card.category)}),
+      h("div",{class:"rmid"},
+        h("p",{class:"rname"},card.name),
+        h("p",{class:"rlabel"},cat.label)),
+      h("div",{style:"text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px"},
+        card.favorite?h("span",{class:"star",html:STAR_F}):null,
+        card.number?h("span",{class:"rnum"},"•••• "+card.number.slice(-4)):null),
+      h("button",{class:"chev","aria-label":"Card details",onClick:e=>{e.stopPropagation();openDetail(card);},
+        html:INFO_IC})
+    );
+  }
+
+  // ---------- layout renderers ----------
+  function renderStack(content,list){
+    const stack=h("div",{class:"stack"});
+    list.forEach((c,i)=>{const f=faceStack(c);f.style.zIndex=String(i+1);stack.appendChild(f);});
+    content.appendChild(stack);
+  }
+  function renderList(content,list){
+    const wrap=h("div",{class:"list"});
+    list.forEach(c=>wrap.appendChild(listRow(c)));
+    content.appendChild(wrap);
+  }
+
+  function render(){
+    // segmented
+    [...$("#seg").children].forEach(b=>b.setAttribute("data-on",String(b.dataset.mode===mode)));
+    // chips
+    const used=CAT_KEYS.filter(k=>cards.some(c=>c.category===k));
+    if(activeCat!=="all" && !used.includes(activeCat))activeCat="all";
+    const chips=$("#chips");chips.innerHTML="";
+    const mk=(key,label)=>h("button",{class:"chip","data-on":String(activeCat===key),onClick:()=>{activeCat=key;render();}},label);
+    chips.appendChild(mk("all","All"));
+    used.forEach(k=>chips.appendChild(mk(k,CATEGORIES[k].label)));
+    // content
+    const content=$("#content");content.innerHTML="";
+    const list=visible();
+    if(list.length===0){
+      content.appendChild(h("div",{class:"empty"},
+        h("div",{class:"box",html:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'}),
+        h("p",{style:"margin-top:14px"}, cards.length?"No cards match.":"Your wallet is empty."),
+        h("button",{onClick:()=>openAdd()}, cards.length?"Add another card":"Add your first card")));
+      return;
+    }
+    maybeBackupBanner(content);
+    content.appendChild(h("div",{style:"display:flex;align-items:center;justify-content:space-between;margin:26px 0 12px"},
+      h("p",{class:"eyebrow",style:"margin:0"}, mode==="stack"?"Your wallet":"All cards"),
+      h("button",{class:"arrange-btn",onClick:openArrange},h("span",{html:ARRANGE_IC}),settings.sortMode==="custom"?"Custom order":"Most used")));
+    if(mode==="list")renderList(content,list);
+    else renderStack(content,list);
+  }
+
+  function maybeBackupBanner(content){
+    const now=Date.now();
+    if(!(cards.length>0 && (now-(settings.lastBackup||0)>14*864e5) && now>(settings.snoozeUntil||0))) return;
+    content.appendChild(h("div",{class:"backup-banner"},
+      h("div",{style:"flex:1;min-width:0"},
+        h("p",{style:"margin:0;font-weight:600;font-size:13.5px;color:var(--text)"},"Back up your wallet"),
+        h("p",{style:"margin:3px 0 0;font-size:12px;color:var(--muted);line-height:1.4"},"Your cards live only on this device. Save a backup file so you don't lose them.")),
+      h("button",{class:"banner-go",onClick:exportBackup},"Back up"),
+      h("button",{class:"banner-x","aria-label":"Dismiss",html:closeIcon,onClick:async()=>{settings.snoozeUntil=Date.now()+7*864e5;await saveSettings();render();}})));
+  }
+
+  function openArrange(){
+    const wrapList=h("div",{class:"reorder-list"});
+    let workingIds=sortCards(cards.slice()).map(c=>String(c.id));
+    async function persistOrder(){for(let i=0;i<workingIds.length;i++){const c=cards.find(x=>String(x.id)===workingIds[i]);if(c){c.order=i;await dbPut(c);}}}
+    function enableDrag(){
+      wrapList.querySelectorAll(".reorder-row").forEach(row=>{
+        const handle=row.querySelector(".drag-handle");if(!handle)return;
+        handle.addEventListener("pointerdown",(e)=>{
+          e.preventDefault();row.classList.add("dragging");try{handle.setPointerCapture(e.pointerId);}catch(_){}
+          let done=false;
+          const move=(ev)=>{const rows=[...wrapList.querySelectorAll(".reorder-row:not(.dragging)")];let ref=null;for(const r of rows){const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){ref=r;break;}}wrapList.insertBefore(row,ref);};
+          const up=()=>{if(done)return;done=true;document.removeEventListener("pointermove",move);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);handle.removeEventListener("lostpointercapture",up);row.classList.remove("dragging");workingIds=[...wrapList.querySelectorAll(".reorder-row")].map(r=>r.dataset.id);persistOrder().then(()=>{sortNow();render();});};
+          document.addEventListener("pointermove",move);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);handle.addEventListener("lostpointercapture",up);
+        });
+      });
+    }
+    function paint(){
+      wrapList.innerHTML="";const byId=new Map(cards.map(c=>[String(c.id),c]));
+      workingIds.forEach(id=>{const c=byId.get(id);if(!c)return;const cat=CATEGORIES[c.category]||CATEGORIES.other;
+        wrapList.appendChild(h("div",{class:"reorder-row","data-id":String(id)},
+          h("div",{style:`background:${grad(cat.hue)};width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;flex:0 0 auto`,html:ICON(c.category)}),
+          h("div",{style:"flex:1;min-width:0"},
+            h("p",{class:"rname",style:"font-size:14px"},(c.favorite?"★ ":"")+c.name),
+            h("p",{class:"rlabel"},cat.label)),
+          settings.sortMode==="custom"
+            ? h("div",{class:"drag-handle","aria-label":"Drag to reorder",html:DRAG_IC})
+            : h("span",{class:"rnum",style:"color:var(--faint)"},(c.uses||0)+"×")));
+      });
+      if(settings.sortMode==="custom")enableDrag();
+    }
+    const seg=h("div",{class:"mini-seg"},
+      h("button",{"data-on":String(settings.sortMode==="used"),onClick:async()=>{settings.sortMode="used";await saveSettings();workingIds=sortCards(cards.slice()).map(c=>String(c.id));sync();paint();sortNow();render();}},"Most used"),
+      h("button",{"data-on":String(settings.sortMode==="custom"),onClick:async()=>{settings.sortMode="custom";await persistOrder();await saveSettings();sync();paint();sortNow();render();}},"Custom"));
+    function sync(){const bs=seg.children;bs[0].setAttribute("data-on",String(settings.sortMode==="used"));bs[1].setAttribute("data-on",String(settings.sortMode==="custom"));}
+    paint();
+    sheet(
+      h("div",{class:"sheet-bar"},
+        h("h2",{style:"font-size:17px;margin:0;font-weight:600"},"Arrange cards"),
+        h("button",{style:"color:var(--muted)","aria-label":"Close",html:closeIcon,onClick:closeModal})),
+      h("p",{style:"font-size:12.5px;color:var(--muted);margin:2px 0 12px;line-height:1.5"},"“Most used” keeps your frequent and pinned (★) cards on top automatically. Switch to “Custom” to drag every card into the exact order you want."),
+      seg, wrapList
+    );
+  }
+
+  // ---------- modals ----------
+  let modalReturnFocus=null;
+  function trapModal(overlay,label){
+    overlay.setAttribute("role","dialog");
+    overlay.setAttribute("aria-modal","true");
+    if(label)overlay.setAttribute("aria-label",label);
+    const SEL='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+    overlay.addEventListener("keydown",e=>{
+      if(e.key!=="Tab")return;
+      const f=[...overlay.querySelectorAll(SEL)].filter(el=>!el.disabled&&el.offsetParent!==null);
+      if(!f.length)return;
+      const first=f[0],last=f[f.length-1];
+      if(e.shiftKey){if(document.activeElement===first||!overlay.contains(document.activeElement)){e.preventDefault();last.focus();}}
+      else{if(document.activeElement===last||!overlay.contains(document.activeElement)){e.preventDefault();first.focus();}}
+    });
+    if(!modalReturnFocus)modalReturnFocus=document.activeElement;
+    requestAnimationFrame(()=>{const el=overlay.querySelector(SEL);if(el)try{el.focus();}catch(_){}});
+  }
+  function closeModal(){$("#modalRoot").innerHTML="";const r=modalReturnFocus;modalReturnFocus=null;if(r)try{r.focus();}catch(_){}}
+  function sheet(...children){
+    const root=$("#modalRoot");
+    const overlay=h("div",{class:"overlay",onClick:e=>{if(e.target===overlay)closeModal();}});
+    overlay.appendChild(h("div",{class:"sheet"},...children));
+    root.innerHTML="";root.appendChild(overlay);
+    const head=overlay.querySelector("h2");
+    trapModal(overlay,head?head.textContent:"Dialog");
+  }
+
+  function openDetail(card){
+    const cat=CATEGORIES[card.category]||CATEGORIES.other;
+    const face=baseFace(card,()=>{});face.classList.add("detail-face");face.removeAttribute("role");face.removeAttribute("tabindex");
+    face.appendChild(h("div",{class:"body"},
+      h("div",{style:"display:flex;align-items:flex-start;justify-content:space-between"},
+        h("div",{class:"chipic"}), h("span",{style:"color:#fff",html:WAVE})),
+      h("div",{},
+        h("p",{class:"clabel"},cat.label),
+        h("p",{class:"cname",style:"font-size:19px"},card.name))));
+    const holder=h("div",{class:"holder"});
+    const codeCard=h("div",{class:"code-card"},holder,h("p",{class:"digits"},card.number||"—"));
+    setTimeout(()=>renderCode(holder,card,70),0);
+    const star=card.favorite
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="#cdb07e" stroke="#cdb07e" stroke-width="1.4"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>';
+    sheet(
+      h("div",{class:"sheet-bar"},
+        h("button",{style:"color:var(--muted)","aria-label":"Close",onClick:closeModal,
+          html:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>'}),
+        h("div",{class:"tools"},
+          h("button",{"aria-label":"Pin",html:star,onClick:async()=>{card.favorite=!card.favorite;try{await dbPut(card);}catch(err){card.favorite=!card.favorite;toast("Couldn't save — storage may be full");return;}sortNow();render();openDetail(card);}}),
+          h("button",{"aria-label":"Edit",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',onClick:()=>openForm(card)}),
+          h("button",{"aria-label":"Delete",style:"color:var(--danger)",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+            onClick:async()=>{if(confirm("Delete “"+card.name+"”?")){try{await dbDelete(card.id);}catch(err){toast("Couldn't delete — storage error");return;}dropURL(card.id);cards=cards.filter(c=>c.id!==card.id);closeModal();render();toast("Card deleted");}}}))),
+      face, codeCard,
+      card.notes?h("p",{class:"notes"},card.notes):null,
+      h("button",{class:"primary",onClick:()=>openCard(card)},h("span",{html:SHOW_IC}),"Show barcode")
+    );
+  }
+
+  let wakeLock=null;
+  async function acquireWake(){try{if("wakeLock" in navigator){wakeLock=await navigator.wakeLock.request("screen");}}catch(e){}}
+  function releaseWake(){try{wakeLock&&wakeLock.release();}catch(e){}wakeLock=null;}
+  function openCard(card){
+    card.uses=(card.uses||0)+1;dbPut(card).catch(()=>{card.uses=Math.max(0,(card.uses||0)-1);});sortNow();render();
+    const cat=CATEGORIES[card.category]||CATEGORIES.other;
+    const front=h("div",{class:"flip-front",style:`background:${grad(cat.hue)}`});
+    if(card.image){front.appendChild(h("img",{class:"photo",src:imgURL(card),alt:""}));front.appendChild(h("div",{class:"photo-veil"}));}
+    front.appendChild(h("div",{class:"grain"}));front.appendChild(h("div",{class:"sheen"}));
+    front.appendChild(h("div",{class:"body"},
+      h("div",{style:"display:flex;align-items:flex-start;justify-content:space-between"},h("div",{class:"chipic"}),h("span",{style:"color:#fff",html:WAVE})),
+      h("div",{},h("p",{class:"clabel"},cat.label),h("p",{class:"cname",style:"font-size:18px"},card.name))));
+    const holder=h("div",{class:"flip-holder"});
+    const back=h("div",{class:"flip-back"},h("p",{class:"flip-name"},card.name),holder,h("p",{class:"flip-digits"},card.number||"—"));
+    const inner=h("div",{class:"flip-inner"},front,back);
+    const stage=h("div",{class:"flip-stage"},inner);
+    const tools=h("div",{class:"flip-tools"},
+      h("button",{class:"flip-tool",onClick:()=>inner.classList.toggle("flipped")},h("span",{html:FLIP_IC}),"Flip"),
+      h("button",{class:"flip-tool",onClick:()=>{closeCard();openShow(card);}},h("span",{html:SHOW_IC}),"Enlarge"),
+      h("button",{class:"flip-tool",onClick:()=>{closeCard();openDetail(card);}},h("span",{html:INFO_IC}),"Details"));
+    const overlay=h("div",{class:"flip-overlay",onClick:e=>{if(e.target===overlay)closeCard();}},
+      h("button",{class:"flip-close","aria-label":"Close",html:closeIcon,onClick:()=>closeCard()}),
+      stage, tools, h("p",{class:"flip-hint"},"Won’t scan? Tap Enlarge for a bigger code."));
+    $("#modalRoot").innerHTML="";$("#modalRoot").appendChild(overlay);trapModal(overlay,card.name||"Card");
+    setTimeout(()=>renderCode(holder,card,100),0);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>inner.classList.add("flipped")));
+    acquireWake();
+    function closeCard(){releaseWake();closeModal();}
+  }
+  function openShow(card){
+    const holder=h("div",{class:"holder"});
+    const screen=h("div",{class:"show"},
+      h("button",{class:"close","aria-label":"Close",html:closeIcon,onClick:closeShow}),
+      h("p",{class:"nm"},card.name), holder,
+      h("p",{class:"digits"},card.number||"—"),
+      h("button",{class:"show-details",onClick:()=>{closeShow();openDetail(card);}},"Details & edit"),
+      h("p",{class:"hint"},"Keep screen bright · tap ✕ to close"));
+    $("#modalRoot").innerHTML="";$("#modalRoot").appendChild(screen);trapModal(screen,card.name||"Card");
+    setTimeout(()=>renderCode(holder,card,150),0);
+    acquireWake();
+    try{screen.requestFullscreen&&screen.requestFullscreen();}catch(e){}
+    function closeShow(){releaseWake();try{document.fullscreenElement&&document.exitFullscreen();}catch(e){}closeModal();}
+  }
+
+  function openAdd(){
+    const choice=(icon,title,sub,onClick)=>h("button",{class:"add-choice",onClick},
+      h("span",{class:"add-ic",html:icon}),
+      h("span",{class:"add-mid"},h("p",{class:"add-t"},title),h("p",{class:"add-s"},sub)),
+      h("span",{class:"add-chev",html:CHEV_R}));
+    sheet(
+      h("div",{class:"sheet-bar"},
+        h("h2",{style:"font-size:17px;margin:0;font-weight:600"},"Add a card"),
+        h("button",{style:"color:var(--muted)","aria-label":"Close",html:closeIcon,onClick:closeModal})),
+      choice(CAM_IC,"Scan a card","Camera fills the number and type for you",()=>openScanner((v,f)=>openForm({number:v,format:f}))),
+      choice(IMG_IC,"Add from a photo","Read a barcode from a picture or screenshot",()=>pickPhoto()),
+      choice(TYPE_IC,"Enter manually","Type the number yourself",()=>openForm(null))
+    );
+  }
+  function pickPhoto(){
+    const inp=h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];inp.remove();if(f)decodeImageFile(f);}});
+    document.body.appendChild(inp);
+    // Don't detach on a timer — that discards the picker's selection on many mobile WebViews.
+    // The change handler removes it; this only cleans up after the picker closes if the user cancels.
+    const cleanup=()=>{window.removeEventListener("focus",cleanup);setTimeout(()=>{if(inp.isConnected)inp.remove();},1000);};
+    window.addEventListener("focus",cleanup);
+    inp.click();
+  }
+  function decodeImageFile(file){
+    const url=URL.createObjectURL(file);
+    try{
+      const rd=new ZXing.BrowserMultiFormatReader();
+      rd.decodeFromImageUrl(url).then(res=>{URL.revokeObjectURL(url);const f=mapZXing(res.getBarcodeFormat());openForm({number:res.getText(),format:f,image:file});toast("Found a "+fmtLabel(f)+" code");})
+        .catch(()=>{URL.revokeObjectURL(url);toast("No barcode found — enter it manually");openForm({image:file});});
+    }catch(e){URL.revokeObjectURL(url);toast("Couldn't read that image");openForm({image:file});}
+  }
+  function openForm(existing){
+    const base={id:null,name:"",category:"loyalty",format:"CODE128",number:"",notes:"",image:null,favorite:false};
+    const card={...base,...(existing||{})};
+    let pending=card.image||null;
+    const nameI=h("input",{id:"f-name",type:"text",value:card.name,placeholder:"e.g. Equinox",maxlength:"40"});
+    const numI=h("input",{id:"f-number",type:"text",class:"mono",value:card.number,placeholder:"Digits from the card"});
+    const fmtS=h("select",{id:"f-type"},...FORMATS.map(f=>{const o=h("option",{value:f.v},f.label);if(f.v===card.format)o.selected=true;return o;}));
+    const notesI=h("textarea",{id:"f-notes",rows:"2",placeholder:"PIN, expiry, member since…"});notesI.value=card.notes;
+    const cats=h("div",{class:"cats"});let chosen=card.category;
+    CAT_KEYS.forEach(k=>{const b=h("button",{class:"catopt","data-on":String(k===chosen),onClick:()=>{chosen=k;[...cats.children].forEach((c,i)=>c.setAttribute("data-on",String(CAT_KEYS[i]===chosen)));}},CATEGORIES[k].label);cats.appendChild(b);});
+    const photo=h("label",{class:"photo-drop"},
+      h("span",{html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'}),
+      h("span",{id:"ptext"}, pending?"Photo added — tap to replace":"Add a photo of the card"),
+      h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];if(f){pending=f;$("#ptext").textContent="Photo added — tap to replace";}}}));
+    let autoFmt = !(existing && existing.format);
+    const prev=h("div",{class:"code-preview",style:"display:none"});
+    function updatePreview(){const v=numI.value.trim();if(!v){prev.style.display="none";return;}prev.style.display="flex";renderCode(prev,{number:v,format:fmtS.value},56);}
+    numI.addEventListener("input",()=>{if(autoFmt){const d=detectFormat(numI.value);if(d)fmtS.value=d;}updatePreview();});
+    fmtS.addEventListener("change",()=>{autoFmt=false;updatePreview();});
+    let saving=false;
+    const save=async()=>{
+      if(saving)return;
+      const name=nameI.value.trim();if(!name){toast("Give the card a name");nameI.focus();return;}
+      let fmt=fmtS.value; const num=(fmt==="QR")?numI.value.trim():numI.value.replace(/\s+/g,"");
+      if(num && !validFor(num,fmt)){
+        if(fmt!=="CODE128" && validFor(num,"CODE128")){ if(confirm("That number isn’t a valid "+fmtLabel(fmt)+". Save it as a Code 128 barcode instead?")){fmt="CODE128";} else {return;} }
+        else if(confirm("That value can’t be encoded as a "+fmtLabel(fmt)+". Save it as a QR code instead?")){ fmt="QR"; }
+        else { return; }
+      }
+      saving=true;
+      const rec={id:card.id||uid(),name,category:chosen,format:fmt,number:num,notes:notesI.value.trim(),image:pending||null,favorite:!!card.favorite,uses:card.uses||0,order:card.order};
+      try{
+        await dbPut(rec);dropURL(rec.id);
+        const i=cards.findIndex(c=>c.id===rec.id);if(i>=0)cards[i]=rec;else cards.push(rec);
+        closeModal();sortNow();render();toast(card.id?"Card updated":"Card added");
+      }catch(e){saving=false;toast("Couldn't save the card");}
+    };
+    sheet(
+      h("div",{class:"sheet-bar"},
+        h("h2",{style:"font-size:17px;margin:0;font-weight:600"}, card.id?"Edit card":"Add card"),
+        h("button",{style:"color:var(--muted)","aria-label":"Close",html:closeIcon,onClick:closeModal})),
+      h("button",{class:"ghost",style:"margin-top:4px",onClick:()=>openScanner((value,fmt)=>{numI.value=value;if(fmt){fmtS.value=fmt;autoFmt=false;}updatePreview();toast("Scanned "+value);})},
+        h("span",{html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>'}),"Scan barcode"),
+      h("div",{class:"field"},h("label",{for:"f-name"},"Name"),nameI),
+      h("div",{class:"field"},h("label",{},"Category"),cats),
+      h("div",{class:"frow"},
+        h("div",{class:"field",style:"margin-top:13px;flex:1"},h("label",{for:"f-number"},"Card number"),numI),
+        h("div",{class:"field",style:"margin-top:13px;flex:0 0 42%"},h("label",{for:"f-type"},"Type"),fmtS)),
+      h("div",{class:"field"},h("label",{},"Preview"),prev),
+      h("div",{class:"field"},h("label",{for:"f-notes"},"Notes"),notesI),
+      h("div",{class:"field"},h("label",{},"Photo (optional)"),photo),
+      h("button",{class:"primary",onClick:save}, card.id?"Save changes":"Add to wallet")
+    );
+    updatePreview();
+  }
+  let reader=null;
+  function openScanner(onResult){
+    const video=h("video",{playsinline:true,muted:true});
+    const errBox=h("div",{class:"cam-err",style:"display:none"});
+    const screen=h("div",{class:"cam-screen"},
+      video,
+      h("div",{class:"cam-frame"}),
+      h("div",{class:"cam-bar"},
+        h("span",{style:"font-weight:600"},"Scan barcode"),
+        h("button",{style:"color:#fff","aria-label":"Close",html:closeIcon,onClick:stop})),
+      h("p",{class:"cam-tip"},"Point at the barcode on your card"),
+      errBox);
+    $("#modalRoot").appendChild(screen);
+    if(!window.isSecureContext){showErr("Scanning needs a secure page (https or localhost). You can still type the number in by hand.");return;}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showErr("This browser can't open the camera here. Type the number in instead.");return;}
+    try{
+      try{reader&&reader.reset();}catch(_){}reader=new ZXing.BrowserMultiFormatReader();
+      const handle=(result)=>{if(result){const value=result.getText();const fmt=mapZXing(result.getBarcodeFormat());stop();onResult(value,fmt);}};
+      reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"}}},video,handle)
+        .catch(()=>reader.decodeFromVideoDevice(null,video,handle)
+          .catch(()=>showErr("Couldn't access the camera. Check permissions, or type the number in by hand.")));
+    }catch(e){showErr("Scanner unavailable. Type the number in instead.");}
+    function showErr(msg){errBox.style.display="flex";errBox.textContent=msg;}
+    function stop(){try{reader&&reader.reset();}catch(e){}reader=null;screen.remove();}
+  }
+  function mapZXing(fmtEnum){try{const B=ZXing.BarcodeFormat;const m={[B.QR_CODE]:"QR",[B.EAN_13]:"EAN13",[B.EAN_8]:"EAN8",[B.UPC_A]:"UPC",[B.CODE_39]:"CODE39",[B.CODE_128]:"CODE128"};return m[fmtEnum]||"CODE128";}catch(e){return "CODE128";}}
+
+  function blobToDataURL(blob){return new Promise((res)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);r.readAsDataURL(blob);});}
+  async function dataURLToBlob(d){const r=await fetch(d);return await r.blob();}
+  async function exportBackup(){
+    const out=[];let failed=0;
+    for(const c of cards){let image=null;if(c.image){image=await blobToDataURL(c.image);if(image==null)failed++;}out.push({id:c.id,name:c.name,category:c.category,format:c.format,number:c.number,notes:c.notes,favorite:c.favorite,uses:c.uses||0,order:c.order,image});}
+    const blob=new Blob([JSON.stringify({app:"wallet",version:2,cards:out},null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="wallet-backup.json";a.click();URL.revokeObjectURL(a.href);
+    settings.lastBackup=Date.now();await saveSettings();render();
+    toast(failed?("Backup saved, but "+failed+" card photo"+(failed>1?"s":"")+" couldn't be included"):"Backup saved to your device");
+  }
+  async function importBackup(file){
+    let list;
+    try{const data=JSON.parse(await file.text());list=Array.isArray(data)?data:data.cards;if(!Array.isArray(list))throw 0;}
+    catch(e){toast("Couldn't read that backup file");return;}
+    if(!confirm("Import "+list.length+" cards? This replaces what's here now."))return;
+    // Rebuild every record in memory FIRST, so a malformed file can't wipe the existing wallet.
+    const recs=[];const seenIds=new Set();
+    for(const c of list){
+      let image=null;
+      if(c.image){try{image=await dataURLToBlob(c.image);}catch(_){image=null;}}
+      let id=c.id||uid();if(seenIds.has(String(id)))id=uid();seenIds.add(String(id));
+      recs.push({id,name:c.name||"Card",category:c.category||"other",format:c.format||"CODE128",number:c.number||"",notes:c.notes||"",favorite:!!c.favorite,uses:c.uses||0,order:c.order,image});
+    }
+    try{
+      await dbReplaceAll(recs);
+      urlCache.forEach(u=>URL.revokeObjectURL(u));urlCache.clear();
+      cards=recs.slice();
+      sortNow();render();toast("Imported "+cards.length+" cards");
+    }catch(e){cards=await dbGetAll();sortNow();render();toast("Import failed — nothing changed");}
+  }
+
+  const SEED=[
+    {id:1,name:"Equinox",category:"gym",format:"CODE128",number:"884512306",notes:"Member since 2023 · all-club access",image:null,favorite:true,uses:0,order:0},
+    {id:2,name:"Whole Foods Market",category:"grocery",format:"CODE128",number:"6011004512",notes:"Prime member · 2× rewards",image:null,favorite:true,uses:0,order:1},
+    {id:3,name:"Metro GO Pass",category:"transit",format:"CODE128",number:"0042118890",notes:"Auto top-up at $5",image:null,favorite:false,uses:0,order:2},
+    {id:4,name:"Blue Bottle Coffee",category:"cafe",format:"QR",number:"BBC-7741-XYZ",notes:"Free drink every 10 visits",image:null,favorite:false,uses:0,order:3},
+  ];
+
+  function hideSplash(){const s=$("#splash");if(s){s.classList.add("hide");setTimeout(()=>{s&&s.remove();},500);}}
+  async function init(){
+    setTimeout(hideSplash,4000);
+    try{_db=await openDB();}
+    catch(e){$("#content").innerHTML="";$("#content").appendChild(h("p",{style:"color:var(--muted);margin-top:30px;line-height:1.5"},"Storage isn't available in this context. Open the app from a hosted page (https or localhost) so it can save your cards on this device."));["#addBtn","#exportBtn","#importBtn","#searchInput","#seg","#chips"].forEach(s=>{const el=$(s);if(el){el.setAttribute("aria-disabled","true");el.style.opacity=".4";el.style.pointerEvents="none";}});const _sb=$("#searchInput");if(_sb)_sb.disabled=true;hideSplash();return;}
+    cards=await dbGetAll();
+    const saved=await metaGet("settings");
+    const seeded=await metaGet("seeded");
+    // Seed demo cards only on a genuinely first run. Gate on the settings record too, so a
+    // failed "seeded" write can't silently re-create demo cards after the user clears their
+    // wallet (the settings record is written on first run and thereafter persists).
+    if(cards.length===0 && !seeded && !saved){for(const s of SEED){await dbPut(s);}cards=await dbGetAll();try{await metaPut("seeded",true);}catch(e){}}
+    if(saved)settings=Object.assign(settings,saved);else{settings.lastBackup=Date.now();await saveSettings();}
+    try{if(navigator.storage&&navigator.storage.persist){await navigator.storage.persist();}}catch(e){}
+    sortNow();render();
+    hideSplash();
+    $("#seg").addEventListener("click",e=>{const b=e.target.closest("button");if(b){mode=b.dataset.mode;render();}});
+    $("#addBtn").addEventListener("click",()=>openAdd());
+    $("#searchInput").addEventListener("input",e=>{query=e.target.value;render();});
+    $("#exportBtn").addEventListener("click",exportBackup);
+    $("#importBtn").addEventListener("click",()=>$("#importInput").click());
+    $("#importInput").addEventListener("change",e=>{const f=e.target.files&&e.target.files[0];if(f)importBackup(f);e.target.value="";});
+    document.addEventListener("keydown",e=>{
+      if(e.key!=="Escape")return;
+      const _cam=$(".cam-screen");if(_cam){try{reader&&reader.reset();}catch(_){}reader=null;_cam.remove();return;}
+      if($(".show")||$(".flip-overlay")){releaseWake();try{document.fullscreenElement&&document.exitFullscreen();}catch(_){}}
+      if($("#modalRoot").children.length)closeModal();
+    });
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&($(".show")||$(".flip-overlay")))acquireWake();});
+    document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&$(".show")){releaseWake();closeModal();}});
+  }
+  init();
+})();

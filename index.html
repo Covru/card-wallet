@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0c0b0a" />
+<meta name="description" content="A private, offline wallet for your membership and loyalty cards. Nothing leaves your device." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Wallet — local cards</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="splash" class="splash">
+    <div class="splash-logo">
+      <svg viewBox="0 0 100 100" width="92" height="92" fill="none">
+        <rect x="16" y="26" width="64" height="42" rx="8" transform="rotate(-8 48 47)" fill="#4a3357"/>
+        <g transform="translate(7,7) rotate(-8 48 47)">
+          <rect x="16" y="26" width="64" height="42" rx="8" fill="#d8bd84"/>
+          <rect x="22" y="32" width="12" height="9" rx="2" fill="#2a2113"/>
+          <g fill="#241b0c">
+            <rect x="22" y="52" width="2.5" height="10"/><rect x="27" y="52" width="1.5" height="10"/>
+            <rect x="31" y="52" width="3" height="10"/><rect x="36.5" y="52" width="1.5" height="10"/>
+            <rect x="40" y="52" width="2.5" height="10"/><rect x="45" y="52" width="3.5" height="10"/>
+            <rect x="51" y="52" width="1.5" height="10"/><rect x="55" y="52" width="2.5" height="10"/>
+          </g>
+          <path d="M68 34 a8 8 0 0 1 0 12" stroke="#2a2113" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+    <div class="splash-name">Wallet</div>
+    <div class="splash-dots"><i></i><i></i><i></i></div>
+  </div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="monogram"><b>W</b></div>
+        <div>
+          <p class="label">Private · Offline</p>
+          <h1>Wallet</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="iconbtn" id="exportBtn" aria-label="Export backup" title="Export backup"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button class="iconbtn" id="importBtn" aria-label="Import backup" title="Import backup"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
+        <input type="file" id="importInput" accept="application/json" hidden />
+      </div>
+    </div>
+
+    <div class="seg" id="seg">
+      <button data-mode="stack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="2"/><path d="M6 13h12M7 18h10"/></svg>Stack</button>
+      <button data-mode="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>List</button>
+    </div>
+
+    <div class="search">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search cards" autocomplete="off" />
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="content"></div>
+  </div>
+
+  <button class="fab" id="addBtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add card</button>
+
+  <div id="modalRoot"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="lib/jsbarcode.min.js"></script>
+  <script src="lib/qrcode.min.js"></script>
+  <script src="lib/zxing.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      const hadController = !!navigator.serviceWorker.controller;
+      let swReloaded = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (swReloaded || !hadController) return;
+        swReloaded = true;
+        location.reload();
+      });
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
