@@ -2,15 +2,15 @@
   "appId": "com.covru.cardwallet",
   "appName": "Card Wallet",
   "webDir": "www",
-  "backgroundColor": "#e9e3d5ff",
+  "backgroundColor": "#e4e1d9ff",
   "android": {
-    "backgroundColor": "#e9e3d5ff",
+    "backgroundColor": "#e4e1d9ff",
     "allowMixedContent": false
   },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1100,
-      "backgroundColor": "#e9e3d5ff",
+      "backgroundColor": "#e4e1d9ff",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,

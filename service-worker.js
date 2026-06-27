@@ -1,10 +1,10 @@
 /* Caches everything on install so the app runs with zero network afterwards.
-   IMPORTANT: bump VERSION on EVERY release — any change to index.html, app.js,
+   IMPORTANT: bump VERSION on EVERY release - any change to index.html, app.js,
    styles.css, the bundled libs, or the Android versionCode. The cache name is
    derived from it, so a new VERSION makes this service worker reinstall and
    re-precache the updated files. Without a bump, returning users (and the
    Capacitor WebView after a Play Store update) keep serving the old cached app. */
-const VERSION = "8";
+const VERSION = "10";
 const CACHE = "wallet-v" + VERSION;
 const ASSETS = [
   "./",
@@ -12,7 +12,15 @@ const ASSETS = [
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./lib/fonts/bricolage-grotesque.woff2",
+  "./lib/fonts/newsreader-500.woff2",
+  "./lib/fonts/newsreader-600.woff2",
+  "./lib/fonts/inter-400.woff2",
+  "./lib/fonts/inter-500.woff2",
+  "./lib/fonts/inter-600.woff2",
+  "./lib/fonts/inter-700.woff2",
+  "./lib/fonts/plexmono-400.woff2",
+  "./lib/fonts/plexmono-500.woff2",
+  "./lib/fonts/plexmono-600.woff2",
   "./lib/jsbarcode.min.js",
   "./lib/qrcode.min.js",
   "./lib/zxing.min.js",

@@ -1,14 +1,14 @@
 (() => {
   "use strict";
   const CATEGORIES = {
-    gym:     { label:"Gym & Fitness", hue:"#E0512A" },
-    grocery: { label:"Grocery",       hue:"#1E8E5A" },
-    transit: { label:"Transit",       hue:"#2C5BD8" },
-    library: { label:"Library",       hue:"#7B3FB0" },
-    cafe:    { label:"Cafe & Food",   hue:"#B0532A" },
-    events:  { label:"Events",        hue:"#D23B6E" },
-    loyalty: { label:"Loyalty",       hue:"#9C6712" },
-    other:   { label:"Other",         hue:"#4A4F57" },
+    gym:     { label:"Gym & Fitness", hue:"#E2724F" },
+    grocery: { label:"Grocery",       hue:"#5BA572" },
+    transit: { label:"Transit",       hue:"#5B8DD9" },
+    library: { label:"Library",       hue:"#9B7BE0" },
+    cafe:    { label:"Cafe & Food",   hue:"#C98A4E" },
+    events:  { label:"Events",        hue:"#DD6A92" },
+    loyalty: { label:"Loyalty",       hue:"#D2A745" },
+    other:   { label:"Other",         hue:"#8B949C" },
   };
   const CAT_KEYS = Object.keys(CATEGORIES);
   const FORMATS = [
@@ -63,7 +63,33 @@
   const CHEV_R='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
 
   function shade(hex,amt){const n=parseInt(hex.slice(1),16);const r=Math.max(0,Math.min(255,(n>>16)+amt));const g=Math.max(0,Math.min(255,((n>>8)&255)+amt));const b=Math.max(0,Math.min(255,(n&255)+amt));return"#"+((r<<16)|(g<<8)|b).toString(16).padStart(6,"0");}
-  const grad=(hue)=>`linear-gradient(150deg, ${shade(hue,20)}, ${shade(hue,-26)})`;
+  // mix `hex` toward `to` by ratio t (0..1)
+  function mix(hex,to,t){const a=parseInt(hex.slice(1),16),b=parseInt(to.slice(1),16);
+    const r=Math.round(((a>>16)&255)+(((b>>16)&255)-((a>>16)&255))*t);
+    const g=Math.round(((a>>8)&255)+(((b>>8)&255)-((a>>8)&255))*t);
+    const c=Math.round((a&255)+((b&255)-(a&255))*t);
+    return"#"+((r<<16)|(g<<8)|c).toString(16).padStart(6,"0");}
+  // "Coal" card: a dark charcoal field tinted by the category hue
+  const grad=(hue)=>`linear-gradient(160deg, ${mix(hue,'#222227',.5)} 0%, ${mix(hue,'#19191D',.7)} 56%, ${mix(hue,'#131316',.8)} 100%)`;
+  const accentLt=(hue)=>mix(hue,'#ffffff',.3);
+  const artCol=(hue)=>mix(hue,'#ffffff',.42);
+  const ricGrad=(hue)=>`linear-gradient(160deg, ${mix(hue,'#222227',.4)}, ${mix(hue,'#19191D',.7)})`;
+  // set the per-card CSS custom properties used by styles.css
+  function cardVars(el,hue){el.style.setProperty('--grad',grad(hue));el.style.setProperty('--accent',hue);el.style.setProperty('--accent-lt',accentLt(hue));el.style.setProperty('--art',artCol(hue));}
+
+  // ---------- per-category card art (illustration based on what the card is) ----------
+  function rep(n,fn){let s="";for(let i=0;i<n;i++)s+=fn(i);return s;}
+  const CARD_ART = {
+    gym:()=>`<path d="M150 92 h22 l6 -15 l9 32 l8 -21 h46" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".32"/><g fill="currentColor" opacity=".5"><rect x="160" y="150" width="150" height="9" rx="4.5"/><rect x="192" y="134" width="13" height="42" rx="3"/><rect x="209" y="126" width="15" height="58" rx="3"/><rect x="250" y="126" width="15" height="58" rx="3"/><rect x="269" y="134" width="13" height="42" rx="3"/></g>`,
+    grocery:()=>`<g fill="currentColor" opacity=".34">${rep(18,i=>`<rect x="${150+i*9}" y="172" width="${i%3?2:4}" height="22"/>`)}</g><g fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".52"><path d="M152 112 h16 l18 56 h70 l15 -42 H182"/><circle cx="198" cy="180" r="6.5"/><circle cx="250" cy="180" r="6.5"/></g>`,
+    transit:()=>`<path d="M150 150 C212 150 212 70 320 70" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="2 9" opacity=".26"/><path d="M150 176 C200 176 202 96 252 96 C292 96 304 96 320 96" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".5"/><g opacity=".55"><circle cx="150" cy="176" r="6" fill="currentColor"/><circle cx="200" cy="136" r="5.5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="252" cy="96" r="6" fill="currentColor"/></g>`,
+    library:()=>`<g opacity=".5" fill="currentColor"><g transform="translate(176 64)"><rect x="0" y="44" width="17" height="90" rx="3"/><rect x="21" y="22" width="17" height="112" rx="3"/><rect x="42" y="50" width="17" height="84" rx="3"/><g transform="rotate(13 86 134)"><rect x="64" y="36" width="17" height="98" rx="3"/></g><rect x="92" y="30" width="17" height="104" rx="3"/></g></g>`,
+    cafe:()=>`<g fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" opacity=".52"><path d="M196 116 h54 v26 a27 27 0 0 1 -54 0 z"/><path d="M250 122 h12 a13 13 0 0 1 0 26 h-7"/><path d="M210 104 c0 -7 -7 -9 -7 -17 M228 104 c0 -7 -7 -9 -7 -17"/></g><g opacity=".3" fill="none" stroke="currentColor" stroke-width="2">${rep(4,i=>`<circle cx="${164+i*22}" cy="182" r="6"/>`)}</g>`,
+    events:()=>`<g opacity=".5" stroke="currentColor" stroke-width="3" fill="none" stroke-linejoin="round"><path d="M172 108 h104 a8 8 0 0 1 8 8 a11 11 0 0 0 0 22 a8 8 0 0 1 -8 8 H172 a8 8 0 0 1 -8 -8 a11 11 0 0 0 0 -22 a8 8 0 0 1 8 -8 z"/><line x1="238" y1="110" x2="238" y2="162" stroke-dasharray="2 7"/></g>`,
+    loyalty:()=>`<g fill="currentColor" opacity=".5"><path d="M244 96 l11 25 27 2 -20.5 18 6 26.5 -23.5 -14 -23.5 14 6 -26.5 -20.5 -18 27 -2 z"/></g><g fill="currentColor" opacity=".3">${rep(3,i=>`<path transform="translate(${168+i*30} ${70+(i%2)*70}) scale(.4)" d="M12 0 l4 9 10 1 -7.5 6.5 2 9.5 -8.5 -5 -8.5 5 2 -9.5 -7.5 -6.5 10 -1 z"/>`)}</g>`,
+    other:()=>`<g fill="none" stroke="currentColor" stroke-width="2.5" opacity=".34">${rep(4,i=>`<circle cx="262" cy="132" r="${18+i*20}"/>`)}</g>`,
+  };
+  const artSVG=(cat)=>`<svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">${(CARD_ART[cat]||CARD_ART.other)()}</svg>`;
 
   function h(tag,props={},...kids){
     const el=document.createElement(tag);
@@ -132,44 +158,47 @@
   // ---------- card faces ----------
   function baseFace(card,onClick){
     const cat=CATEGORIES[card.category]||CATEGORIES.other;
-    const f=h("div",{class:"face",role:"button",tabindex:"0",style:`background:${grad(cat.hue)}`,onClick});
-    if(card.image){f.appendChild(h("img",{class:"photo",src:imgURL(card),alt:""}));f.appendChild(h("div",{class:"photo-veil"}));f.appendChild(h("div",{class:"photo-veil-top"}));}
-    f.appendChild(h("div",{class:"grain"}));f.appendChild(h("div",{class:"sheen"}));
+    const f=h("div",{class:"face",role:"button",tabindex:"0",onClick});
+    cardVars(f,cat.hue);
+    f.appendChild(h("div",{class:"art",html:artSVG(card.category)}));
     f.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onClick();}});
     return f;
+  }
+  function cardHead(card,cat,nameStyle){
+    return h("div",{class:"hd"},
+      h("div",{class:"htext"},
+        h("div",{class:"catline"},h("span",{class:"dot"}),h("p",{class:"clabel"},cat.label)),
+        h("p",{class:"cname",style:nameStyle||""},card.name)),
+      h("div",{style:"display:flex;align-items:center;gap:8px;flex:0 0 auto"},
+        card.favorite?h("span",{class:"star",html:STAR_F}):null,
+        h("button",{class:"info-btn","aria-label":"Card details",onClick:e=>{e.stopPropagation();openDetail(card);},html:INFO_IC})));
   }
   function faceStack(card){
     const cat=CATEGORIES[card.category]||CATEGORIES.other;
     const f=baseFace(card,()=>openCard(card));
-    f.appendChild(h("div",{class:"body"},
-      h("div",{class:"peek"},
-        h("div",{style:"min-width:0"},
-          h("p",{class:"clabel"},cat.label),
-          h("p",{class:"cname"},card.name)),
-        h("div",{style:"display:flex;align-items:center;gap:7px;flex:0 0 auto"},
-          card.favorite?h("span",{style:"color:var(--gold)",html:STAR_F}):null,
-          h("button",{class:"info-btn","aria-label":"Card details",onClick:e=>{e.stopPropagation();openDetail(card);},html:INFO_IC}))),
-      h("div",{style:"display:flex;align-items:flex-end;justify-content:space-between"},
-        h("div",{class:"chipic"}),
-        card.number?h("p",{class:"cnum",style:"margin:0"},"•••• "+card.number.slice(-4)):null)
-    ));
+    f.appendChild(cardHead(card,cat));
+    if(card.number)f.appendChild(h("div",{class:"foot"},
+      h("p",{class:"cnum"},h("b",{},"No."),card.number)));
     return f;
   }
   function listRow(card){
     const cat=CATEGORIES[card.category]||CATEGORIES.other;
-    return h("div",{class:"row",role:"button",tabindex:"0",onClick:()=>openCard(card),
+    const row=h("div",{class:"row",role:"button",tabindex:"0",onClick:()=>openCard(card),
         onKeydown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCard(card);}}},
-      h("div",{class:"spine",style:`background:${grad(cat.hue)}`}),
-      h("div",{class:"ricon",style:`background:${grad(cat.hue)}`,html:ICON(card.category)}),
+      h("div",{class:"spine"}),
+      h("div",{class:"ric",html:ICON(card.category)}),
       h("div",{class:"rmid"},
         h("p",{class:"rname"},card.name),
         h("p",{class:"rlabel"},cat.label)),
       h("div",{style:"text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px"},
         card.favorite?h("span",{class:"star",html:STAR_F}):null,
-        card.number?h("span",{class:"rnum"},"•••• "+card.number.slice(-4)):null),
+        card.number?h("span",{class:"rnum"},card.number):null),
       h("button",{class:"chev","aria-label":"Card details",onClick:e=>{e.stopPropagation();openDetail(card);},
         html:INFO_IC})
     );
+    row.style.setProperty('--accent',cat.hue);
+    row.style.setProperty('--grad',ricGrad(cat.hue));
+    return row;
   }
 
   // ---------- layout renderers ----------
@@ -233,11 +262,14 @@
       wrapList.querySelectorAll(".reorder-row").forEach(row=>{
         const handle=row.querySelector(".drag-handle");if(!handle)return;
         handle.addEventListener("pointerdown",(e)=>{
-          e.preventDefault();row.classList.add("dragging");try{handle.setPointerCapture(e.pointerId);}catch(_){}
+          // Don't use setPointerCapture here: reordering the row that holds the
+          // capturing handle fires lostpointercapture and would end the drag on
+          // the first move. Document-level listeners track the pointer instead.
+          e.preventDefault();row.classList.add("dragging");
           let done=false;
           const move=(ev)=>{const rows=[...wrapList.querySelectorAll(".reorder-row:not(.dragging)")];let ref=null;for(const r of rows){const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){ref=r;break;}}wrapList.insertBefore(row,ref);};
-          const up=()=>{if(done)return;done=true;document.removeEventListener("pointermove",move);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);handle.removeEventListener("lostpointercapture",up);row.classList.remove("dragging");workingIds=[...wrapList.querySelectorAll(".reorder-row")].map(r=>r.dataset.id);persistOrder().then(()=>{sortNow();render();});};
-          document.addEventListener("pointermove",move);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);handle.addEventListener("lostpointercapture",up);
+          const up=()=>{if(done)return;done=true;document.removeEventListener("pointermove",move);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);row.classList.remove("dragging");workingIds=[...wrapList.querySelectorAll(".reorder-row")].map(r=>r.dataset.id);persistOrder().then(()=>{sortNow();render();});};
+          document.addEventListener("pointermove",move);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
         });
       });
     }
@@ -300,14 +332,13 @@
   function openDetail(card){
     const cat=CATEGORIES[card.category]||CATEGORIES.other;
     const face=baseFace(card,()=>{});face.classList.add("detail-face");face.removeAttribute("role");face.removeAttribute("tabindex");
-    face.appendChild(h("div",{class:"body"},
-      h("div",{style:"display:flex;align-items:flex-start;justify-content:space-between"},
-        h("div",{class:"chipic"}), h("span",{style:"color:#fff",html:WAVE})),
-      h("div",{},
-        h("p",{class:"clabel"},cat.label),
-        h("p",{class:"cname",style:"font-size:19px"},card.name))));
+    face.appendChild(h("div",{class:"hd"},
+      h("div",{class:"htext"},
+        h("div",{class:"catline"},h("span",{class:"dot"}),h("p",{class:"clabel"},cat.label)),
+        h("p",{class:"cname",style:"font-size:21px"},card.name))));
+    if(card.image)face.appendChild(h("div",{class:"mid"},h("img",{class:"photo",src:imgURL(card),alt:""})));
     const holder=h("div",{class:"holder"});
-    const codeCard=h("div",{class:"code-card"},holder,h("p",{class:"digits"},card.number||"—"));
+    const codeCard=h("div",{class:"code-card"},holder,h("p",{class:"digits"},card.number||"-"));
     setTimeout(()=>renderCode(holder,card,70),0);
     const star=card.favorite
       ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="#C9971E" stroke="#C9971E" stroke-width="1.4"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>'
@@ -317,15 +348,15 @@
         h("button",{style:"color:var(--muted)","aria-label":"Close",onClick:closeModal,
           html:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>'}),
         h("div",{class:"tools"},
-          h("button",{"aria-label":"Pin",html:star,onClick:async()=>{card.favorite=!card.favorite;try{await dbPut(card);}catch(err){card.favorite=!card.favorite;toast("Couldn't save — storage may be full");return;}sortNow();render();openDetail(card);}}),
+          h("button",{"aria-label":"Pin",html:star,onClick:async()=>{card.favorite=!card.favorite;try{await dbPut(card);}catch(err){card.favorite=!card.favorite;toast("Couldn't save. Storage may be full.");return;}sortNow();render();openDetail(card);}}),
           h("button",{"aria-label":"Edit",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',onClick:()=>openForm(card)}),
           h("button",{"aria-label":"Delete",style:"color:var(--danger)",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
-            onClick:async()=>{if(confirm("Delete “"+card.name+"”?")){try{await dbDelete(card.id);}catch(err){toast("Couldn't delete — storage error");return;}dropURL(card.id);cards=cards.filter(c=>c.id!==card.id);closeModal();render();toast("Card deleted");}}}))),
+            onClick:async()=>{if(confirm("Delete “"+card.name+"”?")){try{await dbDelete(card.id);}catch(err){toast("Couldn't delete. Storage error.");return;}dropURL(card.id);cards=cards.filter(c=>c.id!==card.id);closeModal();render();toast("Card deleted");}}}))),
       face, codeCard,
       card.notes?h("p",{class:"notes"},card.notes):null,
       h("button",{class:"primary",onClick:()=>openCard(card)},h("span",{html:SHOW_IC}),"Show full screen")
     );
-    acquireWake(); // a scannable barcode is visible here too — keep the screen lit
+    acquireWake(); // a scannable barcode is visible here too - keep the screen lit
   }
 
   let wakeLock=null;
@@ -334,14 +365,16 @@
   function openCard(card){
     card.uses=(card.uses||0)+1;dbPut(card).catch(()=>{card.uses=Math.max(0,(card.uses||0)-1);});sortNow();render();
     const cat=CATEGORIES[card.category]||CATEGORIES.other;
-    const front=h("div",{class:"flip-front",style:`background:${grad(cat.hue)}`});
-    if(card.image){front.appendChild(h("img",{class:"photo",src:imgURL(card),alt:""}));front.appendChild(h("div",{class:"photo-veil"}));}
-    front.appendChild(h("div",{class:"grain"}));front.appendChild(h("div",{class:"sheen"}));
-    front.appendChild(h("div",{class:"body"},
-      h("div",{style:"display:flex;align-items:flex-start;justify-content:space-between"},h("div",{class:"chipic"}),h("span",{style:"color:#fff",html:WAVE})),
-      h("div",{},h("p",{class:"clabel"},cat.label),h("p",{class:"cname",style:"font-size:18px"},card.name))));
+    const front=h("div",{class:"flip-front"});
+    front.style.background=grad(cat.hue);cardVars(front,cat.hue);
+    front.appendChild(h("div",{class:"art",html:artSVG(card.category)}));
+    front.appendChild(h("div",{class:"hd"},
+      h("div",{class:"htext"},
+        h("div",{class:"catline"},h("span",{class:"dot"}),h("p",{class:"clabel"},cat.label)),
+        h("p",{class:"cname",style:"font-size:19px"},card.name))));
+    if(card.image)front.appendChild(h("div",{class:"mid"},h("img",{class:"photo",src:imgURL(card),alt:""})));
     const holder=h("div",{class:"flip-holder"});
-    const back=h("div",{class:"flip-back"},h("div",{class:"punch",style:`background:${shade(cat.hue,-18)}`}),h("p",{class:"flip-name"},card.name),holder,h("p",{class:"flip-digits"},card.number||"—"));
+    const back=h("div",{class:"flip-back"},h("div",{class:"punch",style:`background:${shade(cat.hue,-18)}`}),h("p",{class:"flip-name"},card.name),holder,h("p",{class:"flip-digits"},card.number||"-"));
     // Open already showing the barcode (the reason you tapped the card); "Flip" reveals the face.
     const inner=h("div",{class:"flip-inner flipped"},front,back);
     const stage=h("div",{class:"flip-stage"},inner);
@@ -349,7 +382,7 @@
       h("button",{class:"flip-tool",onClick:()=>inner.classList.toggle("flipped")},h("span",{html:FLIP_IC}),"Flip"),
       h("button",{class:"flip-tool",onClick:()=>{closeCard();openShow(card);}},h("span",{html:SHOW_IC}),"Enlarge"),
       h("button",{class:"flip-tool",onClick:()=>{closeCard();openDetail(card);}},h("span",{html:INFO_IC}),"Details"));
-    const overlay=h("div",{class:"flip-overlay",style:`background:radial-gradient(88% 56% at 50% 34%, ${shade(cat.hue,30)}, ${shade(cat.hue,-36)})`,onClick:e=>{if(e.target===overlay)closeCard();}},
+    const overlay=h("div",{class:"flip-overlay",style:`background:radial-gradient(90% 56% at 50% 34%, ${mix(cat.hue,'#000000',.25)}, ${mix(cat.hue,'#000000',.66)})`,onClick:e=>{if(e.target===overlay)closeCard();}},
       h("div",{class:"spill"}),
       h("button",{class:"flip-close","aria-label":"Close",html:closeIcon,onClick:()=>closeCard()}),
       stage, tools, h("p",{class:"flip-hint"},"Won’t scan? Tap Enlarge for a bigger code."));
@@ -363,7 +396,7 @@
     const screen=h("div",{class:"show"},
       h("button",{class:"close","aria-label":"Close",html:closeIcon,onClick:closeShow}),
       h("p",{class:"nm"},card.name), holder,
-      h("p",{class:"digits"},card.number||"—"),
+      h("p",{class:"digits"},card.number||"-"),
       h("button",{class:"show-details",onClick:()=>{closeShow();openDetail(card);}},"Details & edit"),
       h("p",{class:"hint"},"Keep screen bright · tap ✕ to close"));
     $("#modalRoot").innerHTML="";$("#modalRoot").appendChild(screen);trapModal(screen,card.name||"Card");
@@ -374,23 +407,25 @@
   }
 
   function openAdd(){
-    const choice=(icon,title,sub,onClick)=>h("button",{class:"add-choice",onClick},
+    const choice=(icon,title,sub,onClick,rec)=>h("button",{class:"add-choice"+(rec?" rec":""),onClick},
       h("span",{class:"add-ic",html:icon}),
-      h("span",{class:"add-mid"},h("p",{class:"add-t"},title),h("p",{class:"add-s"},sub)),
+      h("span",{class:"add-mid"},
+        h("p",{class:"add-t"},title,rec?h("span",{class:"rec-tag"},"Fastest"):null),
+        h("p",{class:"add-s"},sub)),
       h("span",{class:"add-chev",html:CHEV_R}));
     sheet(
       h("div",{class:"sheet-bar"},
-        h("h2",{style:"font-size:17px;margin:0;font-weight:600"},"Add a card"),
+        h("h2",{style:"font-size:18px;margin:0;font-weight:600"},"Add a card"),
         h("button",{style:"color:var(--muted)","aria-label":"Close",html:closeIcon,onClick:closeModal})),
-      choice(CAM_IC,"Scan a card","Camera fills the number and type for you",()=>openScanner((v,f)=>openForm({number:v,format:f}))),
-      choice(IMG_IC,"Add from a photo","Read a barcode from a picture or screenshot",()=>pickPhoto()),
-      choice(TYPE_IC,"Enter manually","Type the number yourself",()=>openForm(null))
+      choice(CAM_IC,"Scan with camera","Point at the barcode and we fill the number and type for you.",()=>openScanner((v,f)=>openForm({number:v,format:f})),true),
+      choice(IMG_IC,"Use a photo","Read a barcode from a screenshot or gallery picture.",()=>pickPhoto()),
+      choice(TYPE_IC,"Enter by hand","Type the number from the card yourself.",()=>openForm(null))
     );
   }
   function pickPhoto(){
     const inp=h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];inp.remove();if(f)decodeImageFile(f);}});
     document.body.appendChild(inp);
-    // Don't detach on a timer — that discards the picker's selection on many mobile WebViews.
+    // Don't detach on a timer - that discards the picker's selection on many mobile WebViews.
     // The change handler removes it; this only cleans up after the picker closes if the user cancels.
     const cleanup=()=>{window.removeEventListener("focus",cleanup);setTimeout(()=>{if(inp.isConnected)inp.remove();},1000);};
     window.addEventListener("focus",cleanup);
@@ -401,7 +436,7 @@
     try{
       const rd=new ZXing.BrowserMultiFormatReader();
       rd.decodeFromImageUrl(url).then(res=>{URL.revokeObjectURL(url);const f=mapZXing(res.getBarcodeFormat());openForm({number:res.getText(),format:f,image:file});toast("Found a "+fmtLabel(f)+" code");})
-        .catch(()=>{URL.revokeObjectURL(url);toast("No barcode found — enter it manually");openForm({image:file});});
+        .catch(()=>{URL.revokeObjectURL(url);toast("No barcode found. Enter it manually.");openForm({image:file});});
     }catch(e){URL.revokeObjectURL(url);toast("Couldn't read that image");openForm({image:file});}
   }
   function openForm(existing){
@@ -409,15 +444,16 @@
     const card={...base,...(existing||{})};
     let pending=card.image||null;
     const nameI=h("input",{id:"f-name",type:"text",value:card.name,placeholder:"e.g. Equinox",maxlength:"40"});
-    const numI=h("input",{id:"f-number",type:"text",class:"mono",value:card.number,placeholder:"Digits from the card"});
+    const numI=h("input",{id:"f-number",type:"text",class:"mono",value:card.number,placeholder:"Digits under the barcode"});
+    const numLabel=h("label",{for:"f-number"},"Barcode number");
     const fmtS=h("select",{id:"f-type"},...FORMATS.map(f=>{const o=h("option",{value:f.v},f.label);if(f.v===card.format)o.selected=true;return o;}));
-    const notesI=h("textarea",{id:"f-notes",rows:"2",placeholder:"PIN, expiry, member since…"});notesI.value=card.notes;
+    const notesI=h("textarea",{id:"f-notes",rows:"2",placeholder:"e.g. member since 2019, home branch"});notesI.value=card.notes;
     const cats=h("div",{class:"cats"});let chosen=card.category;
-    CAT_KEYS.forEach(k=>{const b=h("button",{class:"catopt","data-on":String(k===chosen),onClick:()=>{chosen=k;[...cats.children].forEach((c,i)=>c.setAttribute("data-on",String(CAT_KEYS[i]===chosen)));}},CATEGORIES[k].label);cats.appendChild(b);});
+    CAT_KEYS.forEach(k=>{const b=h("button",{class:"catopt","data-on":String(k===chosen),onClick:()=>{chosen=k;[...cats.children].forEach((c,i)=>c.setAttribute("data-on",String(CAT_KEYS[i]===chosen)));}},CATEGORIES[k].label);b.style.setProperty('--accent',CATEGORIES[k].hue);cats.appendChild(b);});
     const photo=h("label",{class:"photo-drop"},
       h("span",{html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'}),
-      h("span",{id:"ptext"}, pending?"Photo added — tap to replace":"Add a photo of the card"),
-      h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];if(f){pending=f;$("#ptext").textContent="Photo added — tap to replace";}}}));
+      h("span",{id:"ptext"}, pending?"Photo added. Tap to replace.":"Add a photo of the card"),
+      h("input",{type:"file",accept:"image/*",hidden:true,onChange:e=>{const f=e.target.files&&e.target.files[0];if(f){pending=f;$("#ptext").textContent="Photo added. Tap to replace.";}}}));
     let autoFmt = !(existing && existing.format);
     const prev=h("div",{class:"code-preview",style:"display:none"});
     // The exact symbology (Code 128, EAN-13, …) is detected automatically and hidden behind
@@ -427,7 +463,7 @@
     const typeWrap=h("div",{class:"field",style:"display:none;margin-top:10px"},h("label",{for:"f-type"},"Barcode type (advanced)"),fmtS);
     const typeRow=h("div",{class:"type-row"},h("span",{},"Code type:"),typeLabel,
       h("button",{class:"type-change",type:"button",onClick:()=>{typeWrap.style.display=(typeWrap.style.display==="none"?"block":"none");}},"Change"));
-    function syncTypeName(){typeLabel.textContent=typeName(fmtS.value);}
+    function syncTypeName(){typeLabel.textContent=typeName(fmtS.value);numLabel.textContent=fmtS.value==="QR"?"Code content":"Barcode number";}
     function updatePreview(){const v=numI.value.trim();if(!v){prev.style.display="none";return;}prev.style.display="flex";renderCode(prev,{number:v,format:fmtS.value},56);}
     numI.addEventListener("input",()=>{if(autoFmt){const d=detectFormat(numI.value);if(d)fmtS.value=d;}syncTypeName();updatePreview();});
     fmtS.addEventListener("change",()=>{autoFmt=false;syncTypeName();updatePreview();});
@@ -457,16 +493,16 @@
         h("button",{style:"color:var(--muted)","aria-label":"Close",html:closeIcon,onClick:closeModal})),
       h("button",{class:"ghost",style:"margin-top:4px",onClick:()=>openScanner((value,fmt)=>{numI.value=value;if(fmt){fmtS.value=fmt;autoFmt=false;}updatePreview();toast("Scanned "+value);})},
         h("span",{html:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>'}),"Scan barcode"),
-      h("div",{class:"field"},h("label",{for:"f-name"},"Name"),nameI),
+      h("div",{class:"field"},h("label",{for:"f-name"},"Card name"),nameI),
       h("div",{class:"field"},h("label",{},"Category"),cats),
-      h("div",{class:"field"},h("label",{for:"f-number"},"Card number"),numI),
+      h("div",{class:"field"},numLabel,numI),
       typeRow, typeWrap,
       h("div",{class:"field"},h("label",{},"Preview"),prev),
+      h("div",{class:"field"},h("label",{},"Front photo (optional)"),photo),
       h("div",{class:"field"},h("label",{for:"f-notes"},"Notes"),notesI),
-      h("div",{class:"field"},h("label",{},"Photo (optional)"),photo),
       h("button",{class:"primary",onClick:save}, card.id?"Save changes":"Add to wallet")
     );
-    updatePreview();
+    syncTypeName();updatePreview();
   }
   let reader=null;
   function openScanner(onResult){
@@ -524,7 +560,7 @@
       urlCache.forEach(u=>URL.revokeObjectURL(u));urlCache.clear();
       cards=recs.slice();
       sortNow();render();toast("Imported "+cards.length+" cards");
-    }catch(e){cards=await dbGetAll();sortNow();render();toast("Import failed — nothing changed");}
+    }catch(e){cards=await dbGetAll();sortNow();render();toast("Import failed. Nothing changed.");}
   }
 
   function hideSplash(){const s=$("#splash");if(s){s.classList.add("hide");setTimeout(()=>{s&&s.remove();},500);}}

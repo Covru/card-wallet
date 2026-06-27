@@ -5,7 +5,9 @@
   "description": "A private, offline wallet for membership and loyalty cards. All data stays on the device.",
   "scripts": {
     "assets": "capacitor-assets generate --android",
-    "sync": "cap sync android",
+    "copy:web": "node scripts/copy-web.js",
+    "sync": "node scripts/copy-web.js && cap sync android",
+    "android:install": "npm run sync && node scripts/android-install.js",
     "open:android": "cap open android"
   },
   "dependencies": {

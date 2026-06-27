@@ -1,4 +1,4 @@
-# Privacy Policy — Wallet (Local Cards)
+# Privacy Policy - Wallet (Local Cards)
 
 _Last updated: June 26, 2026_
 
@@ -11,8 +11,8 @@ no servers, no analytics, no advertising, and no user accounts. Everything you
 put into the app stays on your device.
 
 ## What the app stores, and where
-- The cards you add — names, categories, numbers/barcodes, notes, and any photos
-  you attach — are stored **only on your device**, in the browser/WebView's local
+- The cards you add - names, categories, numbers/barcodes, notes, and any photos
+  you attach - are stored **only on your device**, in the browser/WebView's local
   database (IndexedDB). This data never leaves the device.
 - The app does not create an account and does not require an email, phone number,
   or any sign-in.
