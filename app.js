@@ -1,9 +1,11 @@
 (() => {
   "use strict";
+  // Categories are for cards you scan/show a barcode or QR for. Tap-only cards
+  // (e.g. transit fare cards with an NFC chip) can't be stored here, so they're
+  // intentionally not offered.
   const CATEGORIES = {
     gym:     { label:"Gym & Fitness", hue:"#E2724F" },
     grocery: { label:"Grocery",       hue:"#5BA572" },
-    transit: { label:"Transit",       hue:"#5B8DD9" },
     library: { label:"Library",       hue:"#9B7BE0" },
     cafe:    { label:"Cafe & Food",   hue:"#C98A4E" },
     events:  { label:"Events",        hue:"#DD6A92" },
@@ -259,17 +261,56 @@
     let workingIds=sortCards(cards.slice()).map(c=>String(c.id));
     async function persistOrder(){for(let i=0;i<workingIds.length;i++){const c=cards.find(x=>String(x.id)===workingIds[i]);if(c){c.order=i;await dbPut(c);}}}
     function enableDrag(){
-      wrapList.querySelectorAll(".reorder-row").forEach(row=>{
-        const handle=row.querySelector(".drag-handle");if(!handle)return;
+      // Smooth reorder: the dragged row lifts and tracks the pointer (instant,
+      // no transition), while the other rows slide to open a gap (transitioned).
+      // The DOM is only re-sequenced once, on drop, so nothing jumps mid-drag.
+      wrapList.querySelectorAll(".drag-handle").forEach(handle=>{
+        const row=handle.closest(".reorder-row");if(!row)return;
         handle.addEventListener("pointerdown",(e)=>{
-          // Don't use setPointerCapture here: reordering the row that holds the
-          // capturing handle fires lostpointercapture and would end the drag on
-          // the first move. Document-level listeners track the pointer instead.
-          e.preventDefault();row.classList.add("dragging");
-          let done=false;
-          const move=(ev)=>{const rows=[...wrapList.querySelectorAll(".reorder-row:not(.dragging)")];let ref=null;for(const r of rows){const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){ref=r;break;}}wrapList.insertBefore(row,ref);};
-          const up=()=>{if(done)return;done=true;document.removeEventListener("pointermove",move);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);row.classList.remove("dragging");workingIds=[...wrapList.querySelectorAll(".reorder-row")].map(r=>r.dataset.id);persistOrder().then(()=>{sortNow();render();});};
-          document.addEventListener("pointermove",move);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
+          e.preventDefault();
+          const rows=[...wrapList.querySelectorAll(".reorder-row")];
+          const startIndex=rows.indexOf(row);
+          const rects=rows.map(r=>r.getBoundingClientRect());
+          const step=rows.length>1?(rects[1].top-rects[0].top):(rects[0].height+8);
+          const startY=e.clientY;
+          let newIndex=startIndex,done=false;
+          row.classList.add("dragging");
+          const move=(ev)=>{
+            const dy=ev.clientY-startY;
+            row.style.transform="translateY("+dy+"px)";
+            const center=rects[startIndex].top+rects[startIndex].height/2+dy;
+            let ni=0;
+            rows.forEach((r,i)=>{ if(i!==startIndex && center>rects[i].top+rects[i].height/2) ni++; });
+            if(ni!==newIndex){
+              newIndex=ni;
+              rows.forEach((r,i)=>{
+                if(i===startIndex)return;
+                let s=0;
+                if(startIndex<newIndex && i>startIndex && i<=newIndex) s=-step;
+                else if(startIndex>newIndex && i>=newIndex && i<startIndex) s=step;
+                r.style.transform = s ? "translateY("+s+"px)" : "";
+              });
+            }
+          };
+          const up=()=>{
+            if(done)return;done=true;
+            document.removeEventListener("pointermove",move);
+            document.removeEventListener("pointerup",up);
+            document.removeEventListener("pointercancel",up);
+            // commit the new order in one go, with transitions off so it doesn't slide
+            rows.forEach(r=>r.style.transition="none");
+            const ids=rows.map(r=>r.dataset.id);
+            const [moved]=ids.splice(startIndex,1); ids.splice(newIndex,0,moved);
+            workingIds=ids;
+            ids.forEach(id=>{ const r=rows.find(x=>x.dataset.id===id); if(r)wrapList.appendChild(r); });
+            rows.forEach(r=>{r.style.transform="";});
+            row.classList.remove("dragging");
+            requestAnimationFrame(()=>rows.forEach(r=>{r.style.transition="";}));
+            persistOrder().then(()=>{sortNow();render();});
+          };
+          document.addEventListener("pointermove",move);
+          document.addEventListener("pointerup",up);
+          document.addEventListener("pointercancel",up);
         });
       });
     }
@@ -340,6 +381,13 @@
     const holder=h("div",{class:"holder"});
     const codeCard=h("div",{class:"code-card"},holder,h("p",{class:"digits"},card.number||"-"));
     setTimeout(()=>renderCode(holder,card,70),0);
+    const typeLabel = card.format==="QR" ? "QR code" : "Barcode";
+    const infoRow=(k,v,mono)=>h("div",{class:"info-row"},h("span",{class:"k"},k),h("span",{class:"v"+(mono?" mono":"")},v));
+    const info=h("div",{class:"info-list"},
+      infoRow("Category",cat.label),
+      card.number?infoRow("Number",card.number,true):null,
+      infoRow("Type",typeLabel),
+      card.notes?infoRow("Notes",card.notes):null);
     const star=card.favorite
       ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="#C9971E" stroke="#C9971E" stroke-width="1.4"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>'
       : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4l1.4-6.8L2.2 9l6.9-.7z"/></svg>';
@@ -352,8 +400,7 @@
           h("button",{"aria-label":"Edit",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',onClick:()=>openForm(card)}),
           h("button",{"aria-label":"Delete",style:"color:var(--danger)",html:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
             onClick:async()=>{if(confirm("Delete “"+card.name+"”?")){try{await dbDelete(card.id);}catch(err){toast("Couldn't delete. Storage error.");return;}dropURL(card.id);cards=cards.filter(c=>c.id!==card.id);closeModal();render();toast("Card deleted");}}}))),
-      face, codeCard,
-      card.notes?h("p",{class:"notes"},card.notes):null,
+      face, codeCard, info,
       h("button",{class:"primary",onClick:()=>openCard(card)},h("span",{html:SHOW_IC}),"Show full screen")
     );
     acquireWake(); // a scannable barcode is visible here too - keep the screen lit
@@ -387,7 +434,7 @@
       h("button",{class:"flip-close","aria-label":"Close",html:closeIcon,onClick:()=>closeCard()}),
       stage, tools, h("p",{class:"flip-hint"},"Won’t scan? Tap Enlarge for a bigger code."));
     $("#modalRoot").innerHTML="";$("#modalRoot").appendChild(overlay);trapModal(overlay,card.name||"Card");
-    setTimeout(()=>renderCode(holder,card,100),0);
+    setTimeout(()=>renderCode(holder,card,86),0);
     acquireWake();
     function closeCard(){releaseWake();closeModal();}
   }

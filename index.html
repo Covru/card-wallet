@@ -17,19 +17,24 @@
 <body>
   <div id="splash" class="splash">
     <div class="splash-logo">
-      <!-- Coal mark: a tinted card behind a bone loyalty card, brass dot + barcode. -->
-      <svg viewBox="0 0 100 100" width="96" height="96" fill="none">
-        <g transform="rotate(-7 50 50)">
-          <rect x="34" y="22" width="46" height="31" rx="5" transform="translate(7 -6)" fill="#9B7BE0"/>
-          <rect x="18" y="29" width="59" height="42" rx="6" fill="#23202A"/>
-          <rect x="18.4" y="29.4" width="58.2" height="41.2" rx="5.6" fill="none" stroke="#FFFFFF" stroke-opacity="0.14"/>
-          <circle cx="66" cy="37.5" r="4.4" fill="#C9A24E"/>
+      <!-- Card-stack mark: matches the app icon. -->
+      <svg viewBox="0 0 100 100" width="110" height="110" fill="none">
+        <defs>
+          <linearGradient id="sCoral" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0" stop-color="#F2885F"/><stop offset="1" stop-color="#DC5E38"/></linearGradient>
+          <linearGradient id="sBlue" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0" stop-color="#6E9CEC"/><stop offset="1" stop-color="#3F73CE"/></linearGradient>
+          <linearGradient id="sGreen" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0" stop-color="#6FC68A"/><stop offset="1" stop-color="#3F9C64"/></linearGradient>
+          <linearGradient id="sChar" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#2C2833"/><stop offset="1" stop-color="#14121A"/></linearGradient>
+          <linearGradient id="sBrass" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="#F6DF98"/><stop offset=".48" stop-color="#CDA659"/><stop offset="1" stop-color="#92702E"/></linearGradient>
+        </defs>
+        <g transform="translate(50,50) scale(0.98) translate(-50,-55.5)">
+          <rect x="20" y="24" width="60" height="30" rx="7" fill="url(#sCoral)"/>
+          <rect x="20" y="35" width="60" height="30" rx="7" fill="url(#sBlue)"/>
+          <rect x="20" y="46" width="60" height="30" rx="7" fill="url(#sGreen)"/>
+          <rect x="20" y="57" width="60" height="30" rx="7" fill="url(#sChar)"/>
+          <rect x="28.5" y="62" width="11" height="8" rx="2" fill="url(#sBrass)"/>
+          <circle cx="64" cy="66" r="2.4" fill="url(#sBrass)"/>
           <g fill="#ECE9DF">
-            <rect x="25" y="44" width="3" height="18"/><rect x="30" y="44" width="1.6" height="18"/>
-            <rect x="34" y="44" width="4.2" height="18"/><rect x="40" y="44" width="2" height="18"/>
-            <rect x="44" y="44" width="3" height="18"/><rect x="49" y="44" width="4.6" height="18"/>
-            <rect x="56" y="44" width="1.8" height="18"/><rect x="60" y="44" width="3.4" height="18"/>
-            <rect x="65.5" y="44" width="2.2" height="18"/>
+            <rect x="28.9" y="70.5" width="2.6" height="11" rx="0.3"/><rect x="33.4" y="70.5" width="1.4" height="11" rx="0.3"/><rect x="36.7" y="70.5" width="3.6" height="11" rx="0.3"/><rect x="42.2" y="70.5" width="1.8" height="11" rx="0.3"/><rect x="45.9" y="70.5" width="2.6" height="11" rx="0.3"/><rect x="50.4" y="70.5" width="4" height="11" rx="0.3" fill="url(#sBrass)"/><rect x="56.3" y="70.5" width="1.6" height="11" rx="0.3"/><rect x="59.8" y="70.5" width="3" height="11" rx="0.3"/><rect x="64.7" y="70.5" width="1.9" height="11" rx="0.3"/><rect x="68.5" y="70.5" width="2.6" height="11" rx="0.3"/>
           </g>
         </g>
       </svg>
@@ -42,7 +47,6 @@
       <div class="brand">
         <div class="monogram"></div>
         <div>
-          <p class="label">Private · Offline</p>
           <h1>Card Wallet</h1>
         </div>
       </div>
